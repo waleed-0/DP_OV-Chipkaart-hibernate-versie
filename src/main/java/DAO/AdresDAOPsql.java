@@ -4,16 +4,16 @@ import jakarta.persistence.EntityManager;
 import jakarta.persistence.EntityManagerFactory;
 import jakarta.persistence.EntityTransaction;
 
-import main.java.POJO.OVChipkaart;
+import main.java.POJO.Adres;
 import main.java.POJO.Reiziger;
 
 import java.util.List;
 
-public class OVChipkaartDAOHibernate implements OVChipkaartDAO {
+public class AdresDAOPsql implements AdresDAO {
 
     private final EntityManagerFactory emf;
 
-    public OVChipkaartDAOHibernate(
+    public AdresDAOPsql(
             EntityManagerFactory emf) {
 
         this.emf = emf;
@@ -21,9 +21,9 @@ public class OVChipkaartDAOHibernate implements OVChipkaartDAO {
 
     @Override
     public boolean save(
-            OVChipkaart ovChipkaart) {
+            Adres adres) {
 
-        if (ovChipkaart == null) {
+        if (adres == null) {
             return false;
         }
 
@@ -38,7 +38,7 @@ public class OVChipkaartDAOHibernate implements OVChipkaartDAO {
             transaction.begin();
 
             em.persist(
-                    ovChipkaart
+                    adres
             );
 
             transaction.commit();
@@ -63,9 +63,9 @@ public class OVChipkaartDAOHibernate implements OVChipkaartDAO {
 
     @Override
     public boolean update(
-            OVChipkaart ovChipkaart) {
+            Adres adres) {
 
-        if (ovChipkaart == null) {
+        if (adres == null) {
             return false;
         }
 
@@ -79,9 +79,8 @@ public class OVChipkaartDAOHibernate implements OVChipkaartDAO {
 
             transaction.begin();
 
-
             em.merge(
-                    ovChipkaart
+                    adres
             );
 
             transaction.commit();
@@ -106,9 +105,9 @@ public class OVChipkaartDAOHibernate implements OVChipkaartDAO {
 
     @Override
     public boolean delete(
-            OVChipkaart ovChipkaart) {
+            Adres adres) {
 
-        if (ovChipkaart == null) {
+        if (adres == null) {
             return false;
         }
 
@@ -122,13 +121,13 @@ public class OVChipkaartDAOHibernate implements OVChipkaartDAO {
 
             transaction.begin();
 
-            OVChipkaart managedOVChipkaart =
+            Adres managedAdres =
                     em.find(
-                            OVChipkaart.class,
-                            ovChipkaart.getKaart_nummer()
+                            Adres.class,
+                            adres.getId()
                     );
 
-            if (managedOVChipkaart == null) {
+            if (managedAdres == null) {
 
                 transaction.rollback();
 
@@ -136,7 +135,7 @@ public class OVChipkaartDAOHibernate implements OVChipkaartDAO {
             }
 
             em.remove(
-                    managedOVChipkaart
+                    managedAdres
             );
 
             transaction.commit();
@@ -160,30 +159,33 @@ public class OVChipkaartDAOHibernate implements OVChipkaartDAO {
     }
 
     @Override
-    public List<OVChipkaart> findByReiziger(
-            Reiziger reiziger) {
-
-        if (reiziger == null) {
-            return List.of();
-        }
+    public Adres findById(
+            int id) {
 
         EntityManager em =
                 emf.createEntityManager();
 
         try {
 
-            return em.createQuery(
-                            "SELECT o " +
-                                    "FROM OVChipkaart o " +
-                                    "JOIN FETCH o.reiziger " +
-                                    "WHERE o.reiziger.reiziger_id = :reizigerId",
-                            OVChipkaart.class
-                    )
-                    .setParameter(
-                            "reizigerId",
-                            reiziger.getId()
-                    )
-                    .getResultList();
+            List<Adres> resultaten =
+                    em.createQuery(
+                                    "SELECT a " +
+                                            "FROM Adres a " +
+                                            "JOIN FETCH a.reiziger " +
+                                            "WHERE a.adres_id = :id",
+                                    Adres.class
+                            )
+                            .setParameter(
+                                    "id",
+                                    id
+                            )
+                            .getResultList();
+
+            if (resultaten.isEmpty()) {
+                return null;
+            }
+
+            return resultaten.get(0);
 
         } finally {
 
@@ -192,7 +194,46 @@ public class OVChipkaartDAOHibernate implements OVChipkaartDAO {
     }
 
     @Override
-    public List<OVChipkaart> findAll() {
+    public Adres findByReiziger(
+            Reiziger reiziger) {
+
+        if (reiziger == null) {
+            return null;
+        }
+
+        EntityManager em =
+                emf.createEntityManager();
+
+        try {
+
+            List<Adres> resultaten =
+                    em.createQuery(
+                                    "SELECT a " +
+                                            "FROM Adres a " +
+                                            "JOIN FETCH a.reiziger " +
+                                            "WHERE a.reiziger.reiziger_id = :reizigerId",
+                                    Adres.class
+                            )
+                            .setParameter(
+                                    "reizigerId",
+                                    reiziger.getId()
+                            )
+                            .getResultList();
+
+            if (resultaten.isEmpty()) {
+                return null;
+            }
+
+            return resultaten.get(0);
+
+        } finally {
+
+            em.close();
+        }
+    }
+
+    @Override
+    public List<Adres> findAll() {
 
         EntityManager em =
                 emf.createEntityManager();
@@ -200,10 +241,10 @@ public class OVChipkaartDAOHibernate implements OVChipkaartDAO {
         try {
 
             return em.createQuery(
-                            "SELECT o " +
-                                    "FROM OVChipkaart o " +
-                                    "JOIN FETCH o.reiziger",
-                            OVChipkaart.class
+                            "SELECT a " +
+                                    "FROM Adres a " +
+                                    "JOIN FETCH a.reiziger",
+                            Adres.class
                     )
                     .getResultList();
 

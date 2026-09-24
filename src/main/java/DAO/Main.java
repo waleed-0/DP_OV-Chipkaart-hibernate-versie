@@ -1,16 +1,26 @@
 package main.java.DAO;
 
-import jakarta.persistence.EntityManagerFactory;
-import jakarta.persistence.Persistence;
-
 import main.java.POJO.OVChipkaart;
 import main.java.POJO.Reiziger;
 
+import java.sql.Connection;
 import java.sql.Date;
+import java.sql.DriverManager;
+import java.sql.PreparedStatement;
+import java.sql.SQLException;
 import java.time.LocalDate;
 import java.util.List;
 
 public class Main {
+
+    private static final String Url =
+            "jdbc:postgresql://localhost:5432/ovchip";
+
+    private static final String User =
+            "postgres";
+
+    private static final String Password =
+            "0000";
 
     private static final int TEST_REIZIGER_ID =
             100;
@@ -21,107 +31,247 @@ public class Main {
     private static final int TEST_KAART_ID_2 =
             654321;
 
+    private static final int TEST_KAART_ID_3 =
+            777777;
 
     public static void main(String[] args) {
 
-        EntityManagerFactory emf =
-                null;
+        Connection conn =
+                getConnection();
+
+        if (conn == null) {
+
+            System.out.println(
+                    "Er is een fout opgetreden tijdens " +
+                            "het maken van de databaseverbinding."
+            );
+
+            return;
+        }
 
         try {
 
-            emf =
-                    Persistence.createEntityManagerFactory(
-                            "ovchip"
+
+            ReizigerDAOPsql reizigerDAO =
+                    new ReizigerDAOPsql(
+                            conn
+                    );
+
+            OVChipkaartDAOPsql ovChipkaartDAO =
+                    new OVChipkaartDAOPsql(
+                            conn
                     );
 
 
-            ReizigerDAOHibernate reizigerDAO =
-                    new ReizigerDAOHibernate(
-                            emf
-                    );
+            reizigerDAO.setOVChipkaartDAO(
+                    ovChipkaartDAO
+            );
 
-            OVChipkaartDAOHibernate ovChipkaartDAO =
-                    new OVChipkaartDAOHibernate(
-                            emf
-                    );
+            ovChipkaartDAO.setReizigerDAO(
+                    reizigerDAO
+            );
 
 
-            testP4H(
+            verwijderOudeP4TestData(
+                    conn
+            );
+
+            testP4(
                     reizigerDAO,
                     ovChipkaartDAO
             );
 
 
-        } catch (Exception e) {
+        } catch (SQLException e) {
 
             System.out.println(
-                    "Er is een fout opgetreden tijdens de P4H-test."
+                    "Er is een databasefout opgetreden."
             );
 
             e.printStackTrace();
 
         } finally {
 
-            if (emf != null &&
-                    emf.isOpen()) {
+            closeConnection(
+                    conn
+            );
+        }
+    }
 
-                emf.close();
 
-                System.out.println(
-                        "\nEntityManagerFactory gesloten."
-                );
+    private static Connection getConnection() {
+
+        Connection connection =
+                null;
+
+        try {
+
+            connection =
+                    DriverManager.getConnection(
+                            Url,
+                            User,
+                            Password
+                    );
+
+            System.out.println(
+                    "Databaseverbinding is ok."
+            );
+
+        } catch (SQLException e) {
+
+            System.out.println(
+                    "Databaseverbinding kon niet worden gemaakt."
+            );
+
+            e.printStackTrace();
+        }
+
+        return connection;
+    }
+
+    private static void closeConnection(
+            Connection connection) {
+
+        if (connection != null) {
+
+            try {
+
+                if (!connection.isClosed()) {
+
+                    connection.close();
+
+                    System.out.println(
+                            "Databaseverbinding gesloten."
+                    );
+                }
+
+            } catch (SQLException e) {
+
+                e.printStackTrace();
             }
         }
     }
 
 
-    public static void testP4H(
+    private static void verwijderOudeP4TestData(
+            Connection conn)
+            throws SQLException {
+
+        System.out.println(
+                "\n--- Oude P4-testdata controleren ---"
+        );
+
+
+        String deleteKaarten =
+                "DELETE FROM ov_chipkaart " +
+                        "WHERE kaart_nummer = ? " +
+                        "OR kaart_nummer = ? " +
+                        "OR kaart_nummer = ? " +
+                        "OR reiziger_id = ?";
+
+        try (PreparedStatement statement =
+                     conn.prepareStatement(
+                             deleteKaarten
+                     )) {
+
+            statement.setInt(
+                    1,
+                    TEST_KAART_ID_1
+            );
+
+            statement.setInt(
+                    2,
+                    TEST_KAART_ID_2
+            );
+
+            statement.setInt(
+                    3,
+                    TEST_KAART_ID_3
+            );
+
+            statement.setInt(
+                    4,
+                    TEST_REIZIGER_ID
+            );
+
+            int aantalVerwijderd =
+                    statement.executeUpdate();
+
+            if (aantalVerwijderd > 0) {
+
+                System.out.println(
+                        aantalVerwijderd +
+                                " oude test-OVChipkaart(en) verwijderd."
+                );
+            }
+        }
+
+
+        String deleteAdres =
+                "DELETE FROM adres " +
+                        "WHERE reiziger_id = ?";
+
+        try (PreparedStatement statement =
+                     conn.prepareStatement(
+                             deleteAdres
+                     )) {
+
+            statement.setInt(
+                    1,
+                    TEST_REIZIGER_ID
+            );
+
+            statement.executeUpdate();
+        }
+
+        String deleteReiziger =
+                "DELETE FROM reiziger " +
+                        "WHERE reiziger_id = ?";
+
+        try (PreparedStatement statement =
+                     conn.prepareStatement(
+                             deleteReiziger
+                     )) {
+
+            statement.setInt(
+                    1,
+                    TEST_REIZIGER_ID
+            );
+
+            int aantalVerwijderd =
+                    statement.executeUpdate();
+
+            if (aantalVerwijderd > 0) {
+
+                System.out.println(
+                        "Oude P4-testreiziger met ID " +
+                                TEST_REIZIGER_ID +
+                                " verwijderd."
+                );
+            }
+        }
+
+        System.out.println(
+                "Database is klaar voor de P4-test."
+        );
+    }
+
+    public static void testP4(
             ReizigerDAO reizigerDAO,
             OVChipkaartDAO ovChipkaartDAO)
-            throws Exception {
+            throws SQLException {
 
         System.out.println(
                 "\n=========================================="
         );
 
-        Reiziger bestaandeReiziger =
-                reizigerDAO.findById(
-                        TEST_REIZIGER_ID
-                );
+        System.out.println(
+                "        P4 - VOLLEDIGE DAO TEST"
+        );
 
-
-        if (bestaandeReiziger != null) {
-
-            List<OVChipkaart> bestaandeKaarten =
-                    ovChipkaartDAO.findByReiziger(
-                            bestaandeReiziger
-                    );
-
-
-            for (OVChipkaart kaart :
-                    bestaandeKaarten) {
-
-                ovChipkaartDAO.delete(
-                        kaart
-                );
-            }
-
-
-            reizigerDAO.delete(
-                    bestaandeReiziger
-            );
-
-
-            System.out.println(
-                    "Oude P4H-testdata verwijderd."
-            );
-
-        } else {
-
-            System.out.println(
-                    "Geen oude P4H-testreiziger gevonden."
-            );
-        }
+        System.out.println(
+                "=========================================="
+        );
 
 
         Reiziger reiziger =
@@ -136,45 +286,6 @@ public class Main {
                 );
 
 
-        System.out.println(
-                "\n--- Nieuwe Reiziger ---"
-        );
-
-        System.out.println(
-                reiziger
-        );
-
-
-
-        System.out.println(
-                "\n--- Reiziger opslaan met Hibernate ---"
-        );
-
-
-        boolean reizigerOpgeslagen =
-                reizigerDAO.save(
-                        reiziger
-                );
-
-
-        System.out.println(
-                "Reiziger opgeslagen: " +
-                        reizigerOpgeslagen
-        );
-
-
-        if (!reizigerOpgeslagen) {
-
-            System.out.println(
-                    "P4H-test gestopt: " +
-                            "Reiziger kon niet worden opgeslagen."
-            );
-
-            return;
-        }
-
-
-
         OVChipkaart kaart1 =
                 new OVChipkaart(
                         TEST_KAART_ID_1,
@@ -186,7 +297,6 @@ public class Main {
                         2,
                         25.50
                 );
-
 
         OVChipkaart kaart2 =
                 new OVChipkaart(
@@ -201,33 +311,18 @@ public class Main {
                 );
 
 
+
         System.out.println(
                 "\n--- Bidirectionele relatie maken ---"
         );
 
-
-        boolean kaart1Toegevoegd =
-                reiziger.voegToeOVChipkaart(
-                        kaart1
-                );
-
-
-        boolean kaart2Toegevoegd =
-                reiziger.voegToeOVChipkaart(
-                        kaart2
-                );
-
-
-        System.out.println(
-                "Kaart 1 toegevoegd: " +
-                        kaart1Toegevoegd
+        reiziger.voegToeOVChipkaart(
+                kaart1
         );
 
-        System.out.println(
-                "Kaart 2 toegevoegd: " +
-                        kaart2Toegevoegd
+        reiziger.voegToeOVChipkaart(
+                kaart2
         );
-
 
         System.out.println(
                 "Aantal kaarten bij Reiziger: " +
@@ -236,14 +331,12 @@ public class Main {
                                 .size()
         );
 
-
         System.out.println(
                 "Reiziger van kaart 1: #" +
                         kaart1
                                 .getReiziger()
                                 .getId()
         );
-
 
         System.out.println(
                 "Reiziger van kaart 2: #" +
@@ -253,72 +346,114 @@ public class Main {
         );
 
 
-
         System.out.println(
-                "\n--- OVChipkaarten opslaan met Hibernate ---"
+                "\n--- Reiziger + OVChipkaarten opslaan ---"
         );
 
-
-        boolean kaart1Opgeslagen =
-                ovChipkaartDAO.save(
-                        kaart1
+        boolean opgeslagen =
+                reizigerDAO.save(
+                        reiziger
                 );
 
-
-        boolean kaart2Opgeslagen =
-                ovChipkaartDAO.save(
-                        kaart2
-                );
-
-
         System.out.println(
-                "Kaart 1 opgeslagen: " +
-                        kaart1Opgeslagen
-        );
-
-
-        System.out.println(
-                "Kaart 2 opgeslagen: " +
-                        kaart2Opgeslagen
+                "Reiziger opgeslagen: " +
+                        opgeslagen
         );
 
 
 
         System.out.println(
-                "\n--- OVChipkaarten ophalen via Reiziger ---"
+                "\n--- Kaarten controleren in database ---"
         );
 
-
-        List<OVChipkaart> kaartenVanReiziger =
+        List<OVChipkaart> opgeslagenKaarten =
                 ovChipkaartDAO.findByReiziger(
                         reiziger
                 );
 
-
         for (OVChipkaart kaart :
-                kaartenVanReiziger) {
+                opgeslagenKaarten) {
 
             System.out.println(
                     kaart
             );
         }
 
-
         System.out.println(
-                "Aantal gevonden kaarten: " +
-                        kaartenVanReiziger.size()
+                "Aantal opgeslagen kaarten: " +
+                        opgeslagenKaarten.size()
         );
 
 
 
         System.out.println(
-                "\n--- Alle OVChipkaarten ---"
+                "\n--- ReizigerDAO.findById() ---"
         );
 
+        Reiziger reizigerUitDatabase =
+                reizigerDAO.findById(
+                        TEST_REIZIGER_ID
+                );
+
+        System.out.println(
+                reizigerUitDatabase
+        );
+
+        if (reizigerUitDatabase != null) {
+
+            System.out.println(
+                    "Aantal opgehaalde OVChipkaarten: " +
+                            reizigerUitDatabase
+                                    .getOvChipkaarten()
+                                    .size()
+            );
+        }
+
+        System.out.println(
+                "\n--- ReizigerDAO.findByGbdatum() ---"
+        );
+
+        List<Reiziger> reizigersOpDatum =
+                reizigerDAO.findByGbdatum(
+                        "2000-01-01"
+                );
+
+        for (Reiziger r :
+                reizigersOpDatum) {
+
+            System.out.println(
+                    r
+            );
+
+            System.out.println(
+                    "Aantal kaarten: " +
+                            r.getOvChipkaarten().size()
+            );
+        }
+
+
+        System.out.println(
+                "\n--- ReizigerDAO.findAll() ---"
+        );
+
+        List<Reiziger> alleReizigers =
+                reizigerDAO.findAll();
+
+        for (Reiziger r :
+                alleReizigers) {
+
+            System.out.println(
+                    r
+            );
+        }
+
+
+        System.out.println(
+                "\n--- OVChipkaartDAO.findAll() ---"
+        );
 
         List<OVChipkaart> alleKaarten =
                 ovChipkaartDAO.findAll();
-
 
         for (OVChipkaart kaart :
                 alleKaarten) {
@@ -330,19 +465,20 @@ public class Main {
 
 
         System.out.println(
-                "\n--- OVChipkaart wijzigen ---"
+                "\n--- Reiziger + OVChipkaart wijzigen ---"
         );
 
+        reiziger.setAchternaam(
+                "Gewijzigd"
+        );
 
         kaart1.setSaldo(
                 75.75
         );
 
-
         kaart1.setKlasse(
                 1
         );
-
 
         kaart1.setGeldig_tot(
                 LocalDate.of(
@@ -353,247 +489,169 @@ public class Main {
         );
 
 
-        boolean kaartGewijzigd =
-                ovChipkaartDAO.update(
-                        kaart1
+        OVChipkaart kaart3 =
+                new OVChipkaart(
+                        TEST_KAART_ID_3,
+                        LocalDate.of(
+                                2031,
+                                1,
+                                1
+                        ),
+                        2,
+                        100.00
                 );
 
-
-        System.out.println(
-                "OVChipkaart gewijzigd: " +
-                        kaartGewijzigd
+        reiziger.voegToeOVChipkaart(
+                kaart3
         );
 
 
-
-        System.out.println(
-                "\n--- Wijziging controleren ---"
-        );
-
-
-        List<OVChipkaart> kaartenNaUpdate =
-                ovChipkaartDAO.findByReiziger(
+        boolean gewijzigd =
+                reizigerDAO.update(
                         reiziger
                 );
 
-
-        for (OVChipkaart kaart :
-                kaartenNaUpdate) {
-
-            System.out.println(
-                    kaart
-            );
-        }
-
-
-
         System.out.println(
-                "\n--- Reiziger opnieuw ophalen ---"
+                "Reiziger bijgewerkt: " +
+                        gewijzigd
         );
 
 
-        Reiziger reizigerUitDatabase =
+        System.out.println(
+                "\n--- Update controleren ---"
+        );
+
+        Reiziger naUpdate =
                 reizigerDAO.findById(
                         TEST_REIZIGER_ID
                 );
 
-
         System.out.println(
-                reizigerUitDatabase
+                naUpdate
         );
 
-
-        if (reizigerUitDatabase != null) {
+        if (naUpdate != null) {
 
             System.out.println(
-                    "Aantal OVChipkaarten vanuit Reiziger: " +
-                            reizigerUitDatabase
+                    "Achternaam: " +
+                            naUpdate.getAchternaam()
+            );
+
+            System.out.println(
+                    "Aantal kaarten na update: " +
+                            naUpdate
                                     .getOvChipkaarten()
                                     .size()
             );
 
-
             for (OVChipkaart kaart :
-                    reizigerUitDatabase
-                            .getOvChipkaarten()) {
+                    naUpdate.getOvChipkaarten()) {
 
                 System.out.println(
-                        "  -> " +
-                                kaart
+                        kaart
                 );
             }
         }
 
 
         System.out.println(
-                "\n--- Bidirectionele relatie controleren ---"
+                "\n--- Kaart uit Reiziger verwijderen ---"
         );
 
-
-        if (reizigerUitDatabase != null) {
-
-            for (OVChipkaart kaart :
-                    reizigerUitDatabase
-                            .getOvChipkaarten()) {
-
-                boolean correct =
-                        kaart.getReiziger() != null &&
-                                kaart.getReiziger().getId() ==
-                                        reizigerUitDatabase.getId();
-
-
-                System.out.println(
-                        "Kaart #" +
-                                kaart.getKaart_nummer() +
-                                " verwijst terug naar Reiziger #" +
-                                reizigerUitDatabase.getId() +
-                                ": " +
-                                correct
-                );
-            }
-        }
-
-
-
-        System.out.println(
-                "\n--- Alle Reizigers ---"
-        );
-
-
-        List<Reiziger> alleReizigers =
-                reizigerDAO.findAll();
-
-
-        for (Reiziger r :
-                alleReizigers) {
-
-            System.out.println(
-                    r
-            );
-        }
-
-
-
-        System.out.println(
-                "\n--- OVChipkaart 1 verwijderen ---"
-        );
-
-
-        boolean kaart1Verwijderd =
-                ovChipkaartDAO.delete(
-                        kaart1
-                );
-
-
-        System.out.println(
-                "Kaart 1 verwijderd uit database: " +
-                        kaart1Verwijderd
-        );
-
-
-        if (kaart1Verwijderd) {
-
-            boolean verwijderdUitObject =
-                    reiziger.verwijderOVChipkaart(
-                            kaart1
-                    );
-
-
-            System.out.println(
-                    "Kaart 1 verwijderd uit Reiziger-object: " +
-                            verwijderdUitObject
-            );
-        }
-
-
-        System.out.println(
-                "\n--- OVChipkaart 2 verwijderen ---"
-        );
-
-
-        boolean kaart2Verwijderd =
-                ovChipkaartDAO.delete(
+        boolean uitObjectVerwijderd =
+                reiziger.verwijderOVChipkaart(
                         kaart2
                 );
 
-
         System.out.println(
-                "Kaart 2 verwijderd uit database: " +
-                        kaart2Verwijderd
+                "Kaart uit Java-object verwijderd: " +
+                        uitObjectVerwijderd
         );
 
 
-        if (kaart2Verwijderd) {
+        boolean opnieuwGewijzigd =
+                reizigerDAO.update(
+                        reiziger
+                );
 
-            boolean verwijderdUitObject =
-                    reiziger.verwijderOVChipkaart(
-                            kaart2
-                    );
+        System.out.println(
+                "Reiziger opnieuw bijgewerkt: " +
+                        opnieuwGewijzigd
+        );
 
+
+        System.out.println(
+                "\n--- Kaarten na verwijderen relatie ---"
+        );
+
+        Reiziger naVerwijderenKaart =
+                reizigerDAO.findById(
+                        TEST_REIZIGER_ID
+                );
+
+        if (naVerwijderenKaart != null) {
 
             System.out.println(
-                    "Kaart 2 verwijderd uit Reiziger-object: " +
-                            verwijderdUitObject
+                    "Aantal kaarten: " +
+                            naVerwijderenKaart
+                                    .getOvChipkaarten()
+                                    .size()
             );
+
+            for (OVChipkaart kaart :
+                    naVerwijderenKaart
+                            .getOvChipkaarten()) {
+
+                System.out.println(
+                        kaart
+                );
+            }
         }
 
 
-
         System.out.println(
-                "\n--- Verwijdering controleren ---"
+                "\n--- Reiziger inclusief kaarten verwijderen ---"
         );
 
+        boolean verwijderd =
+                reizigerDAO.delete(
+                        reiziger
+                );
+
+        System.out.println(
+                "Reiziger verwijderd: " +
+                        verwijderd
+        );
+
+
+        System.out.println(
+                "\n--- Reiziger delete controleren ---"
+        );
+
+        Reiziger controleReiziger =
+                reizigerDAO.findById(
+                        TEST_REIZIGER_ID
+                );
+
+        System.out.println(
+                "Reiziger na verwijderen: " +
+                        controleReiziger
+        );
+
+
+
+        System.out.println(
+                "\n--- Kaarten delete controleren ---"
+        );
 
         List<OVChipkaart> kaartenNaDelete =
                 ovChipkaartDAO.findByReiziger(
                         reiziger
                 );
 
-
         System.out.println(
-                "Aantal kaarten in database: " +
+                "Aantal kaarten na verwijderen Reiziger: " +
                         kaartenNaDelete.size()
-        );
-
-
-        System.out.println(
-                "Aantal kaarten in Java-object: " +
-                        reiziger
-                                .getOvChipkaarten()
-                                .size()
-        );
-
-
-        System.out.println(
-                "\n--- Testreiziger verwijderen ---"
-        );
-
-
-        boolean reizigerVerwijderd =
-                reizigerDAO.delete(
-                        reiziger
-                );
-
-
-        System.out.println(
-                "Reiziger verwijderd: " +
-                        reizigerVerwijderd
-        );
-
-        System.out.println(
-                "\n--- Controleren of Reiziger verwijderd is ---"
-        );
-
-
-        Reiziger controle =
-                reizigerDAO.findById(
-                        TEST_REIZIGER_ID
-                );
-
-
-        System.out.println(
-                "Reiziger na verwijderen: " +
-                        controle
         );
 
 
@@ -603,7 +661,7 @@ public class Main {
         );
 
         System.out.println(
-                "          EINDE P4H TEST"
+                "      EINDE VOLLEDIGE P4 TEST"
         );
 
         System.out.println(
