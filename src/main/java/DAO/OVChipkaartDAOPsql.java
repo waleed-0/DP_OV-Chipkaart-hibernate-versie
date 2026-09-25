@@ -1,6 +1,7 @@
 package main.java.DAO;
 
 import main.java.POJO.OVChipkaart;
+import main.java.POJO.Product;
 import main.java.POJO.Reiziger;
 
 import java.sql.Connection;
@@ -17,7 +18,9 @@ public class OVChipkaartDAOPsql
         implements OVChipkaartDAO {
 
     private final Connection conn;
+
     private ReizigerDAO reizigerDAO;
+    private ProductDAO productDAO;
 
     public OVChipkaartDAOPsql(
             Connection conn) {
@@ -28,7 +31,15 @@ public class OVChipkaartDAOPsql
     public void setReizigerDAO(
             ReizigerDAO reizigerDAO) {
 
-        this.reizigerDAO = reizigerDAO;
+        this.reizigerDAO =
+                reizigerDAO;
+    }
+
+    public void setProductDAO(
+            ProductDAO productDAO) {
+
+        this.productDAO =
+                productDAO;
     }
 
     @Override
@@ -87,8 +98,26 @@ public class OVChipkaartDAOPsql
                 );
             }
 
-            return statement.executeUpdate() > 0;
+            if (statement.executeUpdate() <= 0) {
+                return false;
+            }
         }
+
+        if (ovChipkaart.getProducten() != null) {
+
+            for (Product product :
+                    ovChipkaart.getProducten()) {
+
+                if (!saveProductKoppeling(
+                        ovChipkaart.getKaart_nummer(),
+                        product.getProduct_nummer())) {
+
+                    return false;
+                }
+            }
+        }
+
+        return true;
     }
 
     @Override
@@ -150,8 +179,61 @@ public class OVChipkaartDAOPsql
                     ovChipkaart.getKaart_nummer()
             );
 
-            return statement.executeUpdate() > 0;
+            if (statement.executeUpdate() <= 0) {
+                return false;
+            }
         }
+
+        List<Integer> databaseProductNummers =
+                findProductNummersByKaart(
+                        ovChipkaart.getKaart_nummer()
+                );
+
+        Map<Integer, Product> javaProducten =
+                new HashMap<>();
+
+        if (ovChipkaart.getProducten() != null) {
+
+            for (Product product :
+                    ovChipkaart.getProducten()) {
+
+                int productNummer =
+                        product.getProduct_nummer();
+
+                javaProducten.put(
+                        productNummer,
+                        product
+                );
+
+                if (!databaseProductNummers.contains(
+                        productNummer)) {
+
+                    if (!saveProductKoppeling(
+                            ovChipkaart.getKaart_nummer(),
+                            productNummer)) {
+
+                        return false;
+                    }
+                }
+            }
+        }
+
+        for (Integer productNummer :
+                databaseProductNummers) {
+
+            if (!javaProducten.containsKey(
+                    productNummer)) {
+
+                if (!deleteProductKoppeling(
+                        ovChipkaart.getKaart_nummer(),
+                        productNummer)) {
+
+                    return false;
+                }
+            }
+        }
+
+        return true;
     }
 
     @Override
@@ -163,12 +245,31 @@ public class OVChipkaartDAOPsql
             return false;
         }
 
-        String query =
+        String deleteKoppelingen =
+                "DELETE FROM ov_chipkaart_product " +
+                        "WHERE kaart_nummer = ?";
+
+        try (PreparedStatement statement =
+                     conn.prepareStatement(
+                             deleteKoppelingen
+                     )) {
+
+            statement.setInt(
+                    1,
+                    ovChipkaart.getKaart_nummer()
+            );
+
+            statement.executeUpdate();
+        }
+
+        String deleteKaart =
                 "DELETE FROM ov_chipkaart " +
                         "WHERE kaart_nummer = ?";
 
         try (PreparedStatement statement =
-                     conn.prepareStatement(query)) {
+                     conn.prepareStatement(
+                             deleteKaart
+                     )) {
 
             statement.setInt(
                     1,
@@ -229,6 +330,10 @@ public class OVChipkaartDAOPsql
                                     reiziger
                             );
 
+                    vulProductenRechtstreeks(
+                            ovChipkaart
+                    );
+
                     ovChipkaarten.add(
                             ovChipkaart
                     );
@@ -273,8 +378,7 @@ public class OVChipkaartDAOPsql
                 boolean reizigerIdWasNull =
                         resultSet.wasNull();
 
-                Reiziger reiziger =
-                        null;
+                Reiziger reiziger = null;
 
                 if (!reizigerIdWasNull &&
                         reizigerDAO != null) {
@@ -318,6 +422,10 @@ public class OVChipkaartDAOPsql
                                 reiziger
                         );
 
+                vulProductenRechtstreeks(
+                        ovChipkaart
+                );
+
                 ovChipkaarten.add(
                         ovChipkaart
                 );
@@ -325,5 +433,157 @@ public class OVChipkaartDAOPsql
         }
 
         return ovChipkaarten;
+    }
+
+    private void vulProductenRechtstreeks(
+            OVChipkaart ovChipkaart)
+            throws SQLException {
+
+        if (ovChipkaart == null) {
+            return;
+        }
+
+        String query =
+                "SELECT p.product_nummer, " +
+                        "p.naam, " +
+                        "p.beschrijving, " +
+                        "p.prijs " +
+                        "FROM product p " +
+                        "JOIN ov_chipkaart_product op " +
+                        "ON p.product_nummer = op.product_nummer " +
+                        "WHERE op.kaart_nummer = ?";
+
+        try (PreparedStatement statement =
+                     conn.prepareStatement(query)) {
+
+            statement.setInt(
+                    1,
+                    ovChipkaart.getKaart_nummer()
+            );
+
+            try (ResultSet resultSet =
+                         statement.executeQuery()) {
+
+                while (resultSet.next()) {
+
+                    Product product =
+                            new Product(
+                                    resultSet.getInt(
+                                            "product_nummer"
+                                    ),
+                                    resultSet.getString(
+                                            "naam"
+                                    ),
+                                    resultSet.getString(
+                                            "beschrijving"
+                                    ),
+                                    resultSet.getDouble(
+                                            "prijs"
+                                    )
+                            );
+
+                    ovChipkaart.addProduct(
+                            product
+                    );
+                }
+            }
+        }
+    }
+
+    private List<Integer> findProductNummersByKaart(
+            int kaartNummer)
+            throws SQLException {
+
+        List<Integer> productNummers =
+                new ArrayList<>();
+
+        String query =
+                "SELECT product_nummer " +
+                        "FROM ov_chipkaart_product " +
+                        "WHERE kaart_nummer = ?";
+
+        try (PreparedStatement statement =
+                     conn.prepareStatement(query)) {
+
+            statement.setInt(
+                    1,
+                    kaartNummer
+            );
+
+            try (ResultSet resultSet =
+                         statement.executeQuery()) {
+
+                while (resultSet.next()) {
+
+                    productNummers.add(
+                            resultSet.getInt(
+                                    "product_nummer"
+                            )
+                    );
+                }
+            }
+        }
+
+        return productNummers;
+    }
+
+    private boolean saveProductKoppeling(
+            int kaartNummer,
+            int productNummer)
+            throws SQLException {
+
+        String query =
+                "INSERT INTO ov_chipkaart_product " +
+                        "(kaart_nummer, product_nummer) " +
+                        "VALUES (?, ?) " +
+                        "ON CONFLICT (kaart_nummer, product_nummer) " +
+                        "DO NOTHING";
+
+        try (PreparedStatement statement =
+                     conn.prepareStatement(query)) {
+
+            statement.setInt(
+                    1,
+                    kaartNummer
+            );
+
+            statement.setInt(
+                    2,
+                    productNummer
+            );
+
+            statement.executeUpdate();
+
+            return true;
+        }
+    }
+
+    private boolean deleteProductKoppeling(
+            int kaartNummer,
+            int productNummer)
+            throws SQLException {
+
+        String query =
+                "DELETE FROM ov_chipkaart_product " +
+                        "WHERE kaart_nummer = ? " +
+                        "AND product_nummer = ?";
+
+        try (PreparedStatement statement =
+                     conn.prepareStatement(query)) {
+
+            statement.setInt(
+                    1,
+                    kaartNummer
+            );
+
+            statement.setInt(
+                    2,
+                    productNummer
+            );
+
+            statement.executeUpdate();
+
+            return true;
+        }
     }
 }

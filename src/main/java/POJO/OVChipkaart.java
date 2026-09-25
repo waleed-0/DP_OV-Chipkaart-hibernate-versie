@@ -1,6 +1,8 @@
 package main.java.POJO;
 
 import java.time.LocalDate;
+import java.util.ArrayList;
+import java.util.List;
 
 public class OVChipkaart {
 
@@ -10,6 +12,9 @@ public class OVChipkaart {
     private double saldo;
 
     private Reiziger reiziger;
+
+    private List<Product> producten =
+            new ArrayList<>();
 
     public OVChipkaart() {
     }
@@ -90,6 +95,84 @@ public class OVChipkaart {
         this.reiziger = reiziger;
     }
 
+    public List<Product> getProducten() {
+        return producten;
+    }
+
+    public void setProducten(
+            List<Product> producten) {
+
+        this.producten =
+                new ArrayList<>();
+
+        if (producten != null) {
+
+            for (Product product :
+                    producten) {
+
+                addProduct(
+                        product
+                );
+            }
+        }
+    }
+
+    public boolean addProduct(
+            Product product) {
+
+        if (product == null) {
+            return false;
+        }
+
+        if (producten.contains(
+                product)) {
+
+            return false;
+        }
+
+        boolean toegevoegd =
+                producten.add(
+                        product
+                );
+
+        if (toegevoegd &&
+                !product
+                        .getOvChipkaarten()
+                        .contains(this)) {
+
+            product.addOVChipkaart(
+                    this
+            );
+        }
+
+        return toegevoegd;
+    }
+
+    public boolean removeProduct(
+            Product product) {
+
+        if (product == null) {
+            return false;
+        }
+
+        boolean verwijderd =
+                producten.remove(
+                        product
+                );
+
+        if (verwijderd &&
+                product
+                        .getOvChipkaarten()
+                        .contains(this)) {
+
+            product.removeOVChipkaart(
+                    this
+            );
+        }
+
+        return verwijderd;
+    }
+
     @Override
     public String toString() {
 
@@ -98,29 +181,56 @@ public class OVChipkaart {
 
         if (reiziger != null) {
 
-            String naam =
-                    reiziger.getVoorletters();
+            reizigerInfo =
+                    ", reiziger_id " +
+                            reiziger.getId();
+        }
 
-            if (reiziger.getTussenvoegsel() != null &&
-                    !reiziger.getTussenvoegsel().isEmpty()) {
+        StringBuilder productenInfo =
+                new StringBuilder();
 
-                naam +=
-                        " " +
-                                reiziger.getTussenvoegsel();
+        if (producten != null &&
+                !producten.isEmpty()) {
+
+            productenInfo.append(
+                    ", Producten ["
+            );
+
+            for (int i = 0;
+                 i < producten.size();
+                 i++) {
+
+                Product product =
+                        producten.get(i);
+
+                productenInfo.append(
+                        "#"
+                );
+
+                productenInfo.append(
+                        product.getProduct_nummer()
+                );
+
+                productenInfo.append(
+                        " "
+                );
+
+                productenInfo.append(
+                        product.getNaam()
+                );
+
+                if (i <
+                        producten.size() - 1) {
+
+                    productenInfo.append(
+                            ", "
+                    );
+                }
             }
 
-            naam +=
-                    " " +
-                            reiziger.getAchternaam();
-
-            reizigerInfo =
-                    ", Reiziger {#" +
-                            reiziger.getId() +
-                            " " +
-                            naam +
-                            ", geb. " +
-                            reiziger.getGeboortedatum() +
-                            "}";
+            productenInfo.append(
+                    "]"
+            );
         }
 
         return "OVChipkaart {#" +
@@ -132,6 +242,7 @@ public class OVChipkaart {
                 ", saldo " +
                 saldo +
                 reizigerInfo +
+                productenInfo +
                 "}";
     }
 }
