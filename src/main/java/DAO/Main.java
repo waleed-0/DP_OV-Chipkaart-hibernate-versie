@@ -1,29 +1,17 @@
 package main.java.DAO;
 
+import jakarta.persistence.EntityManagerFactory;
+import jakarta.persistence.Persistence;
+
 import main.java.POJO.OVChipkaart;
 import main.java.POJO.Product;
 import main.java.POJO.Reiziger;
 
-import java.sql.Connection;
 import java.sql.Date;
-import java.sql.DriverManager;
-import java.sql.PreparedStatement;
-import java.sql.ResultSet;
-import java.sql.SQLException;
 import java.time.LocalDate;
 import java.util.List;
 
 public class Main {
-
-    private static final String Url =
-            "jdbc:postgresql://localhost:5432/ovchip";
-
-    private static final String User =
-            "postgres";
-
-    private static final String Password =
-            "0000";
-
 
     private static final int TEST_REIZIGER_ID =
             100;
@@ -46,389 +34,78 @@ public class Main {
 
     public static void main(String[] args) {
 
-        Connection conn =
-                getConnection();
-
-        if (conn == null) {
-
-            System.out.println(
-                    "Er is een fout opgetreden tijdens " +
-                            "het maken van de databaseverbinding."
-            );
-
-            return;
-        }
+        EntityManagerFactory emf =
+                null;
 
         try {
 
-            /*
-             * Alle DAO's worden hier één keer
-             * aangemaakt.
-             *
-             * OVChipkaartDAOPsql maakt dus NIET
-             * zelf steeds een ProductDAOPsql aan.
-             */
-
-            ReizigerDAOPsql reizigerDAO =
-                    new ReizigerDAOPsql(
-                            conn
+            emf =
+                    Persistence.createEntityManagerFactory(
+                            "ovchip"
                     );
 
-            OVChipkaartDAOPsql ovChipkaartDAO =
-                    new OVChipkaartDAOPsql(
-                            conn
+            ReizigerDAOHibernate reizigerDAO =
+                    new ReizigerDAOHibernate(
+                            emf
                     );
 
-            ProductDAOPsql productDAO =
-                    new ProductDAOPsql(
-                            conn
+            OVChipkaartDAOHibernate ovChipkaartDAO =
+                    new OVChipkaartDAOHibernate(
+                            emf
                     );
 
+            ProductDAOHibernate productDAO =
+                    new ProductDAOHibernate(
+                            emf
+                    );
 
-            /*
-             * DAO's aan elkaar koppelen.
-             */
-
-            reizigerDAO.setOVChipkaartDAO(
-                    ovChipkaartDAO
-            );
-
-            ovChipkaartDAO.setReizigerDAO(
-                    reizigerDAO
-            );
-
-            ovChipkaartDAO.setProductDAO(
-                    productDAO
-            );
-
-            productDAO.setOVChipkaartDAO(
-                    ovChipkaartDAO
-            );
-
-
-            /*
-             * Oude testdata verwijderen.
-             */
-
-            verwijderOudeP5TestData(
-                    conn
-            );
-
-
-            /*
-             * Volledige P5-test uitvoeren.
-             */
-
-            testP5(
-                    conn,
+            testP5H(
                     reizigerDAO,
                     ovChipkaartDAO,
                     productDAO
             );
 
-
-        } catch (SQLException e) {
+        } catch (Exception e) {
 
             System.out.println(
-                    "Er is een databasefout opgetreden."
+                    "Er is een fout opgetreden tijdens de P5H-test."
             );
 
             e.printStackTrace();
 
         } finally {
 
-            closeConnection(
-                    conn
-            );
-        }
-    }
+            if (emf != null &&
+                    emf.isOpen()) {
 
+                emf.close();
 
-    private static Connection getConnection() {
-
-        Connection connection =
-                null;
-
-        try {
-
-            connection =
-                    DriverManager.getConnection(
-                            Url,
-                            User,
-                            Password
-                    );
-
-            System.out.println(
-                    "Databaseverbinding is ok."
-            );
-
-        } catch (SQLException e) {
-
-            System.out.println(
-                    "Databaseverbinding kon niet worden gemaakt."
-            );
-
-            e.printStackTrace();
-        }
-
-        return connection;
-    }
-
-
-    private static void closeConnection(
-            Connection connection) {
-
-        if (connection != null) {
-
-            try {
-
-                if (!connection.isClosed()) {
-
-                    connection.close();
-
-                    System.out.println(
-                            "Databaseverbinding gesloten."
-                    );
-                }
-
-            } catch (SQLException e) {
-
-                e.printStackTrace();
+                System.out.println(
+                        "\nEntityManagerFactory gesloten."
+                );
             }
         }
     }
 
 
-    /*
-     * ==========================================================
-     * OUDE P5-TESTDATA VERWIJDEREN
-     * ==========================================================
-     */
-
-    private static void verwijderOudeP5TestData(
-            Connection conn)
-            throws SQLException {
-
-        System.out.println(
-                "\n--- Oude P5-testdata controleren ---"
-        );
-
-
-        /*
-         * Eerst koppelingen verwijderen.
-         *
-         * Dit moet vóór Product en OVChipkaart,
-         * vanwege de foreign keys.
-         */
-
-        String deleteKoppelingen =
-                "DELETE FROM ov_chipkaart_product " +
-                        "WHERE kaart_nummer IN (?, ?) " +
-                        "OR product_nummer IN (?, ?, ?)";
-
-        try (PreparedStatement statement =
-                     conn.prepareStatement(
-                             deleteKoppelingen
-                     )) {
-
-            statement.setInt(
-                    1,
-                    TEST_KAART_ID_1
-            );
-
-            statement.setInt(
-                    2,
-                    TEST_KAART_ID_2
-            );
-
-            statement.setInt(
-                    3,
-                    TEST_PRODUCT_ID_1
-            );
-
-            statement.setInt(
-                    4,
-                    TEST_PRODUCT_ID_2
-            );
-
-            statement.setInt(
-                    5,
-                    TEST_PRODUCT_ID_3
-            );
-
-            int verwijderd =
-                    statement.executeUpdate();
-
-            if (verwijderd > 0) {
-
-                System.out.println(
-                        verwijderd +
-                                " oude koppeling(en) verwijderd."
-                );
-            }
-        }
-
-
-        /*
-         * Testproducten verwijderen.
-         */
-
-        String deleteProducten =
-                "DELETE FROM product " +
-                        "WHERE product_nummer IN (?, ?, ?)";
-
-        try (PreparedStatement statement =
-                     conn.prepareStatement(
-                             deleteProducten
-                     )) {
-
-            statement.setInt(
-                    1,
-                    TEST_PRODUCT_ID_1
-            );
-
-            statement.setInt(
-                    2,
-                    TEST_PRODUCT_ID_2
-            );
-
-            statement.setInt(
-                    3,
-                    TEST_PRODUCT_ID_3
-            );
-
-            int verwijderd =
-                    statement.executeUpdate();
-
-            if (verwijderd > 0) {
-
-                System.out.println(
-                        verwijderd +
-                                " oud(e) testproduct(en) verwijderd."
-                );
-            }
-        }
-
-
-        /*
-         * Testkaarten verwijderen.
-         */
-
-        String deleteKaarten =
-                "DELETE FROM ov_chipkaart " +
-                        "WHERE kaart_nummer IN (?, ?) " +
-                        "OR reiziger_id = ?";
-
-        try (PreparedStatement statement =
-                     conn.prepareStatement(
-                             deleteKaarten
-                     )) {
-
-            statement.setInt(
-                    1,
-                    TEST_KAART_ID_1
-            );
-
-            statement.setInt(
-                    2,
-                    TEST_KAART_ID_2
-            );
-
-            statement.setInt(
-                    3,
-                    TEST_REIZIGER_ID
-            );
-
-            int verwijderd =
-                    statement.executeUpdate();
-
-            if (verwijderd > 0) {
-
-                System.out.println(
-                        verwijderd +
-                                " oude testkaart(en) verwijderd."
-                );
-            }
-        }
-
-
-        /*
-         * Eventueel oud testadres verwijderen.
-         */
-
-        String deleteAdres =
-                "DELETE FROM adres " +
-                        "WHERE reiziger_id = ?";
-
-        try (PreparedStatement statement =
-                     conn.prepareStatement(
-                             deleteAdres
-                     )) {
-
-            statement.setInt(
-                    1,
-                    TEST_REIZIGER_ID
-            );
-
-            statement.executeUpdate();
-        }
-
-
-        /*
-         * Testreiziger verwijderen.
-         */
-
-        String deleteReiziger =
-                "DELETE FROM reiziger " +
-                        "WHERE reiziger_id = ?";
-
-        try (PreparedStatement statement =
-                     conn.prepareStatement(
-                             deleteReiziger
-                     )) {
-
-            statement.setInt(
-                    1,
-                    TEST_REIZIGER_ID
-            );
-
-            int verwijderd =
-                    statement.executeUpdate();
-
-            if (verwijderd > 0) {
-
-                System.out.println(
-                        "Oude testreiziger verwijderd."
-                );
-            }
-        }
-
-
-        System.out.println(
-                "Database is klaar voor de P5-test."
-        );
-    }
-
-
-    /*
-     * ==========================================================
-     * VOLLEDIGE P5-TEST
-     * ==========================================================
-     */
-
-    public static void testP5(
-            Connection conn,
+    public static void testP5H(
             ReizigerDAO reizigerDAO,
             OVChipkaartDAO ovChipkaartDAO,
             ProductDAO productDAO)
-            throws SQLException {
+            throws Exception {
+
+        ruimOudeTestdataOp(
+                reizigerDAO,
+                ovChipkaartDAO,
+                productDAO
+        );
 
         System.out.println(
                 "\n=========================================="
         );
 
         System.out.println(
-                "        P5 - VOLLEDIGE DAO TEST"
+                "        P5H - VOLLEDIGE HIBERNATE TEST"
         );
 
         System.out.println(
@@ -436,44 +113,28 @@ public class Main {
         );
 
 
-        /*
-         * ======================================================
-         * 1. REIZIGER AANMAKEN
-         * ======================================================
-         */
 
         Reiziger reiziger =
                 new Reiziger(
                         TEST_REIZIGER_ID,
                         "W.",
                         null,
-                        "P5Test",
-                        Date.valueOf(
-                                "2000-01-01"
-                        )
+                        "Test",
+                        Date.valueOf("2000-01-01")
                 );
-
 
         System.out.println(
                 "\n--- Reiziger opslaan ---"
         );
 
-        boolean reizigerOpgeslagen =
-                reizigerDAO.save(
-                        reiziger
-                );
-
         System.out.println(
                 "Reiziger opgeslagen: " +
-                        reizigerOpgeslagen
+                        reizigerDAO.save(
+                                reiziger
+                        )
         );
 
 
-        /*
-         * ======================================================
-         * 2. OVCHIPKAARTEN AANMAKEN
-         * ======================================================
-         */
 
         OVChipkaart kaart1 =
                 new OVChipkaart(
@@ -501,7 +162,6 @@ public class Main {
                         reiziger
                 );
 
-
         reiziger.voegToeOVChipkaart(
                 kaart1
         );
@@ -510,37 +170,23 @@ public class Main {
                 kaart2
         );
 
-
         System.out.println(
                 "\n--- OVChipkaarten opslaan ---"
         );
 
-        boolean kaart1Opgeslagen =
-                ovChipkaartDAO.save(
-                        kaart1
-                );
-
-        boolean kaart2Opgeslagen =
-                ovChipkaartDAO.save(
-                        kaart2
-                );
-
         System.out.println(
                 "Kaart 1 opgeslagen: " +
-                        kaart1Opgeslagen
+                        ovChipkaartDAO.save(
+                                kaart1
+                        )
         );
 
         System.out.println(
                 "Kaart 2 opgeslagen: " +
-                        kaart2Opgeslagen
+                        ovChipkaartDAO.save(
+                                kaart2
+                        )
         );
-
-
-        /*
-         * ======================================================
-         * 3. PRODUCTEN AANMAKEN
-         * ======================================================
-         */
 
         Product product1 =
                 new Product(
@@ -567,48 +213,30 @@ public class Main {
                 );
 
 
-        /*
-         * ======================================================
-         * 4. BIDIRECTIONELE RELATIES MAKEN
-         * ======================================================
-         */
-
         System.out.println(
                 "\n--- Bidirectionele Product-OVChipkaart relatie ---"
         );
 
-
-        boolean koppeling1 =
-                kaart1.addProduct(
-                        product1
-                );
-
-        boolean koppeling2 =
-                kaart1.addProduct(
-                        product2
-                );
-
-        boolean koppeling3 =
-                kaart2.addProduct(
-                        product1
-                );
-
-
         System.out.println(
                 "Product 1 toegevoegd aan kaart 1: " +
-                        koppeling1
+                        kaart1.addProduct(
+                                product1
+                        )
         );
 
         System.out.println(
                 "Product 2 toegevoegd aan kaart 1: " +
-                        koppeling2
+                        kaart1.addProduct(
+                                product2
+                        )
         );
 
         System.out.println(
                 "Product 1 toegevoegd aan kaart 2: " +
-                        koppeling3
+                        kaart2.addProduct(
+                                product1
+                        )
         );
-
 
         System.out.println(
                 "Aantal producten kaart 1: " +
@@ -623,11 +251,6 @@ public class Main {
                                 .getProducten()
                                 .size()
         );
-
-
-        /*
-         * Terugkoppeling controleren.
-         */
 
         System.out.println(
                 "Aantal kaarten bij product 1: " +
@@ -644,142 +267,122 @@ public class Main {
         );
 
 
-        /*
-         * ======================================================
-         * 5. PRODUCTEN + RELATIES OPSLAAN
-         * ======================================================
-         */
-
         System.out.println(
                 "\n--- Producten + koppelingen opslaan ---"
         );
 
-
-        boolean product1Opgeslagen =
-                productDAO.save(
-                        product1
-                );
-
-        boolean product2Opgeslagen =
-                productDAO.save(
-                        product2
-                );
-
-        boolean product3Opgeslagen =
-                productDAO.save(
-                        product3
-                );
-
-
         System.out.println(
                 "Product 1 opgeslagen: " +
-                        product1Opgeslagen
+                        productDAO.save(
+                                product1
+                        )
         );
 
         System.out.println(
                 "Product 2 opgeslagen: " +
-                        product2Opgeslagen
+                        productDAO.save(
+                                product2
+                        )
         );
 
         System.out.println(
                 "Product 3 opgeslagen: " +
-                        product3Opgeslagen
+                        productDAO.save(
+                                product3
+                        )
         );
 
-
-        /*
-         * ======================================================
-         * 6. TUSSENTABEL DIRECT CONTROLEREN
-         * ======================================================
-         */
-
-        System.out.println(
-                "\n--- Tussentabel controleren ---"
-        );
-
-
-        int aantalKoppelingen =
-                telKoppelingen(
-                        conn
-                );
-
-
-        System.out.println(
-                "Aantal P5-koppelingen in database: " +
-                        aantalKoppelingen
-        );
-
-
-        /*
-         * ======================================================
-         * 7. PRODUCTDAO.FINDBYID()
-         * ======================================================
-         */
 
         System.out.println(
                 "\n--- ProductDAO.findById() ---"
         );
 
-
-        Product gevondenProduct =
+        Product productUitDatabase =
                 productDAO.findById(
                         TEST_PRODUCT_ID_1
                 );
 
+        if (productUitDatabase != null) {
 
-        System.out.println(
-                gevondenProduct
-        );
+            System.out.println(
+                    "Product: #" +
+                            productUitDatabase.getProduct_nummer() +
+                            " " +
+                            productUitDatabase.getNaam()
+            );
 
+            System.out.println(
+                    "Beschrijving: " +
+                            productUitDatabase.getBeschrijving()
+            );
 
-        if (gevondenProduct != null) {
+            System.out.println(
+                    "Prijs: " +
+                            productUitDatabase.getPrijs()
+            );
 
             System.out.println(
                     "Aantal OVChipkaarten bij product 1: " +
-                            gevondenProduct
+                            productUitDatabase
                                     .getOvChipkaarten()
                                     .size()
             );
 
             for (OVChipkaart kaart :
-                    gevondenProduct.getOvChipkaarten()) {
+                    productUitDatabase.getOvChipkaarten()) {
 
                 System.out.println(
-                        "Gekoppelde kaart: " +
-                                kaart
+                        "Gekoppelde kaart: #" +
+                                kaart.getKaart_nummer() +
+                                ", geldig tot " +
+                                kaart.getGeldig_tot() +
+                                ", klasse " +
+                                kaart.getKlasse() +
+                                ", saldo " +
+                                kaart.getSaldo()
                 );
+
+                if (kaart.getReiziger() != null) {
+
+                    System.out.println(
+                            "Reiziger van gekoppelde kaart: #" +
+                                    kaart
+                                            .getReiziger()
+                                            .getId()
+                    );
+                }
             }
+
+        } else {
+
+            System.out.println(
+                    "Product 1 niet gevonden."
+            );
         }
 
-
-        /*
-         * ======================================================
-         * 8. PRODUCTDAO.FINDBYOVCHIPKAART()
-         * ======================================================
-         */
 
         System.out.println(
                 "\n--- ProductDAO.findByOVChipkaart() ---"
         );
-
 
         List<Product> productenVanKaart1 =
                 productDAO.findByOVChipkaart(
                         kaart1
                 );
 
-
         System.out.println(
                 "Aantal producten van kaart 1: " +
                         productenVanKaart1.size()
         );
 
-
         for (Product product :
                 productenVanKaart1) {
 
             System.out.println(
-                    product
+                    "Product #" +
+                            product.getProduct_nummer() +
+                            " " +
+                            product.getNaam()
             );
 
             System.out.println(
@@ -788,47 +391,62 @@ public class Main {
                                     .getOvChipkaarten()
                                     .size()
             );
+
+            for (OVChipkaart kaart :
+                    product.getOvChipkaarten()) {
+
+                System.out.println(
+                        "Teruggekoppelde kaart: #" +
+                                kaart.getKaart_nummer()
+                );
+            }
         }
-
-
-        /*
-         * ======================================================
-         * 9. PRODUCTDAO.FINDALL()
-         * ======================================================
-         */
 
         System.out.println(
                 "\n--- ProductDAO.findAll() ---"
         );
 
-
         List<Product> alleProducten =
                 productDAO.findAll();
-
 
         for (Product product :
                 alleProducten) {
 
             System.out.println(
-                    product
+                    "Product #" +
+                            product.getProduct_nummer() +
+                            ", naam " +
+                            product.getNaam() +
+                            ", beschrijving " +
+                            product.getBeschrijving() +
+                            ", prijs " +
+                            product.getPrijs()
             );
+
+            System.out.println(
+                    "Aantal gekoppelde kaarten: " +
+                            product
+                                    .getOvChipkaarten()
+                                    .size()
+            );
+
+            for (OVChipkaart kaart :
+                    product.getOvChipkaarten()) {
+
+                System.out.println(
+                        "  OVChipkaart #" +
+                                kaart.getKaart_nummer()
+                );
+            }
         }
 
-
-        /*
-         * ======================================================
-         * 10. OVCHIPKAARTDAO.FINDALL()
-         * ======================================================
-         */
 
         System.out.println(
                 "\n--- OVChipkaartDAO.findAll() inclusief Producten ---"
         );
 
-
         List<OVChipkaart> alleKaarten =
                 ovChipkaartDAO.findAll();
-
 
         for (OVChipkaart kaart :
                 alleKaarten) {
@@ -838,124 +456,110 @@ public class Main {
                     kaart.getKaart_nummer() ==
                             TEST_KAART_ID_2) {
 
-                System.out.println(
+                printOVChipkaart(
                         kaart
                 );
-
-                System.out.println(
-                        "Aantal producten: " +
-                                kaart
-                                        .getProducten()
-                                        .size()
-                );
-
-                if (kaart.getReiziger() != null) {
-
-                    System.out.println(
-                            "Reiziger van kaart: #" +
-                                    kaart
-                                            .getReiziger()
-                                            .getId()
-                    );
-                }
             }
         }
 
-
-        /*
-         * ======================================================
-         * 11. PRODUCT UPDATE
-         * ======================================================
-         *
-         * Product 1:
-         *
-         * Eerst:
-         * kaart1 + kaart2
-         *
-         * Daarna:
-         * kaart1 verwijderd
-         * kaart2 blijft
-         *
-         * Zo testen we of update() ook daadwerkelijk
-         * de tussentabel bijwerkt.
-         * ======================================================
-         */
 
         System.out.println(
                 "\n--- Product + koppelingen wijzigen ---"
         );
 
-
-        product1.setNaam(
-                "Dal Voordeel Gewijzigd"
-        );
-
-        product1.setBeschrijving(
-                "Gewijzigde beschrijving"
-        );
-
-        product1.setPrijs(
-                7.50
-        );
-
-
-        boolean kaart1Verwijderd =
-                product1.removeOVChipkaart(
-                        kaart1
+        Product product1VoorUpdate =
+                productDAO.findById(
+                        TEST_PRODUCT_ID_1
                 );
 
+        OVChipkaart kaart1VanProduct =
+                zoekKaart(
+                        product1VoorUpdate,
+                        TEST_KAART_ID_1
+                );
+
+        boolean kaartVerwijderd =
+                product1VoorUpdate != null &&
+                        kaart1VanProduct != null &&
+                        product1VoorUpdate
+                                .removeOVChipkaart(
+                                        kaart1VanProduct
+                                );
 
         System.out.println(
                 "Kaart 1 verwijderd van product 1: " +
-                        kaart1Verwijderd
+                        kaartVerwijderd
         );
 
+        if (product1VoorUpdate != null) {
 
-        boolean productGewijzigd =
-                productDAO.update(
-                        product1
-                );
+            product1VoorUpdate.setNaam(
+                    "Dal Voordeel Gewijzigd"
+            );
 
+            product1VoorUpdate.setBeschrijving(
+                    "Gewijzigde beschrijving"
+            );
 
-        System.out.println(
-                "Product 1 bijgewerkt: " +
-                        productGewijzigd
-        );
+            product1VoorUpdate.setPrijs(
+                    7.50
+            );
+
+            System.out.println(
+                    "Product 1 bijgewerkt: " +
+                            productDAO.update(
+                                    product1VoorUpdate
+                            )
+            );
+        }
+
 
         System.out.println(
                 "\n--- Product update controleren ---"
         );
 
-
-        Product productNaUpdate =
+        Product product1NaUpdate =
                 productDAO.findById(
                         TEST_PRODUCT_ID_1
                 );
 
+        if (product1NaUpdate != null) {
 
-        System.out.println(
-                productNaUpdate
-        );
-
-
-        if (productNaUpdate != null) {
+            System.out.println(
+                    "Product #" +
+                            product1NaUpdate.getProduct_nummer()
+            );
 
             System.out.println(
                     "Naam: " +
-                            productNaUpdate.getNaam()
+                            product1NaUpdate.getNaam()
+            );
+
+            System.out.println(
+                    "Beschrijving: " +
+                            product1NaUpdate.getBeschrijving()
             );
 
             System.out.println(
                     "Prijs: " +
-                            productNaUpdate.getPrijs()
+                            product1NaUpdate.getPrijs()
             );
 
             System.out.println(
                     "Aantal kaarten na update: " +
-                            productNaUpdate
+                            product1NaUpdate
                                     .getOvChipkaarten()
                                     .size()
             );
+
+            for (OVChipkaart kaart :
+                    product1NaUpdate.getOvChipkaarten()) {
+
+                System.out.println(
+                        "Gekoppelde kaart na update: #" +
+                                kaart.getKaart_nummer()
+                );
+            }
         }
 
 
@@ -963,116 +567,125 @@ public class Main {
                 "\n--- Nieuwe koppeling via Product.update() ---"
         );
 
-
-        product3.addOVChipkaart(
-                kaart1
-        );
-
-
-        boolean product3Gewijzigd =
-                productDAO.update(
-                        product3
-                );
-
-
-        System.out.println(
-                "Product 3 bijgewerkt: " +
-                        product3Gewijzigd
-        );
-
-
-        Product product3Controle =
+        Product product3VoorUpdate =
                 productDAO.findById(
                         TEST_PRODUCT_ID_3
                 );
 
+        OVChipkaart kaart1UitDatabase =
+                zoekKaartOpNummer(
+                        ovChipkaartDAO.findAll(),
+                        TEST_KAART_ID_1
+                );
 
-        System.out.println(
-                product3Controle
-        );
+        if (product3VoorUpdate != null &&
+                kaart1UitDatabase != null) {
 
+            System.out.println(
+                    "Nieuwe koppeling toegevoegd: " +
+                            product3VoorUpdate
+                                    .addOVChipkaart(
+                                            kaart1UitDatabase
+                                    )
+            );
 
-        if (product3Controle != null) {
+            System.out.println(
+                    "Product 3 bijgewerkt: " +
+                            productDAO.update(
+                                    product3VoorUpdate
+                            )
+            );
+        }
+
+        Product product3NaUpdate =
+                productDAO.findById(
+                        TEST_PRODUCT_ID_3
+                );
+
+        if (product3NaUpdate != null) {
+
+            System.out.println(
+                    "Product 3: #" +
+                            product3NaUpdate
+                                    .getProduct_nummer() +
+                            " " +
+                            product3NaUpdate
+                                    .getNaam()
+            );
 
             System.out.println(
                     "Aantal kaarten bij product 3: " +
-                            product3Controle
+                            product3NaUpdate
                                     .getOvChipkaarten()
                                     .size()
             );
         }
 
+
+
         System.out.println(
                 "\n--- OVChipkaart + Product relatie wijzigen ---"
         );
 
-
-        OVChipkaart kaart1UitDatabase =
-                zoekTestKaart(
-                        ovChipkaartDAO,
+        OVChipkaart kaart1VoorUpdate =
+                zoekKaartOpNummer(
+                        ovChipkaartDAO.findAll(),
                         TEST_KAART_ID_1
                 );
 
-
-        if (kaart1UitDatabase != null) {
+        if (kaart1VoorUpdate != null) {
 
             System.out.println(
-                    "Kaart vóór wijziging: " +
-                            kaart1UitDatabase
+                    "Kaart vóór wijziging:"
             );
 
-
-            List<Product> productenKaart1 =
-                    kaart1UitDatabase.getProducten();
-
-
-            if (!productenKaart1.isEmpty()) {
-
-                Product teVerwijderen =
-                        productenKaart1.get(0);
-
-
-                boolean verwijderdUitObject =
-                        kaart1UitDatabase.removeProduct(
-                                teVerwijderen
-                        );
-
-
-                System.out.println(
-                        "Product uit kaart-object verwijderd: " +
-                                verwijderdUitObject
-                );
-
-
-                boolean kaartGewijzigd =
-                        ovChipkaartDAO.update(
-                                kaart1UitDatabase
-                        );
-
-
-                System.out.println(
-                        "OVChipkaart bijgewerkt: " +
-                                kaartGewijzigd
-                );
-            }
+            printOVChipkaart(
+                    kaart1VoorUpdate
+            );
         }
 
+        Product product2VanKaart =
+                zoekProduct(
+                        kaart1VoorUpdate,
+                        TEST_PRODUCT_ID_2
+                );
+
+        boolean productVerwijderd =
+                product2VanKaart != null &&
+                        kaart1VoorUpdate != null &&
+                        kaart1VoorUpdate
+                                .removeProduct(
+                                        product2VanKaart
+                                );
+
+        System.out.println(
+                "Product uit kaart-object verwijderd: " +
+                        productVerwijderd
+        );
+
+        if (kaart1VoorUpdate != null) {
+
+            System.out.println(
+                    "OVChipkaart bijgewerkt: " +
+                            ovChipkaartDAO.update(
+                                    kaart1VoorUpdate
+                            )
+            );
+        }
 
         System.out.println(
                 "\n--- OVChipkaart update controleren ---"
         );
 
-
         OVChipkaart kaart1NaUpdate =
-                zoekTestKaart(
-                        ovChipkaartDAO,
+                zoekKaartOpNummer(
+                        ovChipkaartDAO.findAll(),
                         TEST_KAART_ID_1
                 );
 
-
         if (kaart1NaUpdate != null) {
 
-            System.out.println(
+            printOVChipkaart(
                     kaart1NaUpdate
             );
 
@@ -1084,82 +697,76 @@ public class Main {
             );
         }
 
-
         System.out.println(
                 "\n--- Product verwijderen ---"
         );
 
-
-        Product product2UitDatabase =
+        Product product2VoorDelete =
                 productDAO.findById(
                         TEST_PRODUCT_ID_2
                 );
 
-
-        if (product2UitDatabase != null) {
-
-            boolean product2Verwijderd =
-                    productDAO.delete(
-                            product2UitDatabase
-                    );
-
+        if (product2VoorDelete != null) {
 
             System.out.println(
                     "Product 2 verwijderd: " +
-                            product2Verwijderd
+                            productDAO.delete(
+                                    product2VoorDelete
+                            )
+            );
+
+        } else {
+
+            System.out.println(
+                    "Product 2 bestond niet meer."
             );
         }
 
-
-        Product product2Controle =
+        Product product2NaDelete =
                 productDAO.findById(
                         TEST_PRODUCT_ID_2
                 );
 
-
         System.out.println(
                 "Product 2 na verwijderen: " +
-                        product2Controle
+                        product2NaDelete
         );
 
-
-        OVChipkaart kaartControle =
-                zoekTestKaart(
-                        ovChipkaartDAO,
+        OVChipkaart kaart1Controle =
+                zoekKaartOpNummer(
+                        ovChipkaartDAO.findAll(),
                         TEST_KAART_ID_1
                 );
 
-
         System.out.println(
                 "Kaart 1 bestaat na Product-delete nog: " +
-                        (kaartControle != null)
+                        (kaart1Controle != null)
         );
-
 
 
         System.out.println(
                 "\n--- OVChipkaart verwijderen zonder Product te verwijderen ---"
         );
 
-
-        OVChipkaart kaart2UitDatabase =
-                zoekTestKaart(
-                        ovChipkaartDAO,
+        OVChipkaart kaart2VoorDelete =
+                zoekKaartOpNummer(
+                        ovChipkaartDAO.findAll(),
                         TEST_KAART_ID_2
                 );
 
-
-        if (kaart2UitDatabase != null) {
-
-            boolean kaart2Verwijderd =
-                    ovChipkaartDAO.delete(
-                            kaart2UitDatabase
-                    );
-
+        if (kaart2VoorDelete != null) {
 
             System.out.println(
                     "Kaart 2 verwijderd: " +
-                            kaart2Verwijderd
+                            ovChipkaartDAO.delete(
+                                    kaart2VoorDelete
+                            )
+            );
+
+        } else {
+
+            System.out.println(
+                    "Kaart 2 bestond niet meer."
             );
         }
 
@@ -1168,17 +775,27 @@ public class Main {
                         TEST_PRODUCT_ID_1
                 );
 
-
         System.out.println(
                 "Product 1 bestaat na verwijderen kaart 2 nog: " +
                         (product1NaKaartDelete != null)
         );
 
-
         if (product1NaKaartDelete != null) {
 
             System.out.println(
-                    product1NaKaartDelete
+                    "Product 1: #" +
+                            product1NaKaartDelete
+                                    .getProduct_nummer() +
+                            " " +
+                            product1NaKaartDelete
+                                    .getNaam()
+            );
+
+            System.out.println(
+                    "Aantal kaarten bij product 1: " +
+                            product1NaKaartDelete
+                                    .getOvChipkaarten()
+                                    .size()
             );
         }
 
@@ -1187,56 +804,57 @@ public class Main {
                 "\n--- toString() controle ---"
         );
 
+        Product productVoorToString =
+                productDAO.findById(
+                        TEST_PRODUCT_ID_3
+                );
 
-        if (product1NaKaartDelete != null) {
+        if (productVoorToString != null) {
 
             System.out.println(
                     "Product.toString():"
             );
 
             System.out.println(
-                    product1NaKaartDelete
+                    productVoorToString
             );
         }
 
+        OVChipkaart kaartVoorToString =
+                zoekKaartOpNummer(
+                        ovChipkaartDAO.findAll(),
+                        TEST_KAART_ID_1
+                );
 
-        if (kaart1NaUpdate != null) {
+        if (kaartVoorToString != null) {
 
             System.out.println(
                     "OVChipkaart.toString():"
             );
 
             System.out.println(
-                    kaart1NaUpdate
+                    kaartVoorToString
             );
         }
 
-        System.out.println(
-                "\n--- Eindcontrole tussentabel ---"
-        );
-
-
-        toonTestKoppelingen(
-                conn
-        );
 
 
         System.out.println(
-                "\n--- P5-testdata opruimen ---"
+                "\n--- P5H-testdata opruimen ---"
         );
 
-
-        verwijderOudeP5TestData(
-                conn
+        ruimOudeTestdataOp(
+                reizigerDAO,
+                ovChipkaartDAO,
+                productDAO
         );
-
 
         System.out.println(
                 "\n=========================================="
         );
 
         System.out.println(
-                "      EINDE VOLLEDIGE P5 TEST"
+                "      EINDE VOLLEDIGE P5H TEST"
         );
 
         System.out.println(
@@ -1245,139 +863,119 @@ public class Main {
     }
 
 
-    private static int telKoppelingen(
-            Connection conn)
-            throws SQLException {
+    private static void printOVChipkaart(
+            OVChipkaart kaart) {
 
-        String query =
-                "SELECT COUNT(*) " +
-                        "FROM ov_chipkaart_product " +
-                        "WHERE kaart_nummer IN (?, ?) " +
-                        "OR product_nummer IN (?, ?, ?)";
+        if (kaart == null) {
 
-        try (PreparedStatement statement =
-                     conn.prepareStatement(query)) {
-
-            statement.setInt(
-                    1,
-                    TEST_KAART_ID_1
+            System.out.println(
+                    "OVChipkaart is null."
             );
 
-            statement.setInt(
-                    2,
-                    TEST_KAART_ID_2
-            );
-
-            statement.setInt(
-                    3,
-                    TEST_PRODUCT_ID_1
-            );
-
-            statement.setInt(
-                    4,
-                    TEST_PRODUCT_ID_2
-            );
-
-            statement.setInt(
-                    5,
-                    TEST_PRODUCT_ID_3
-            );
-
-
-            try (ResultSet resultSet =
-                         statement.executeQuery()) {
-
-                if (resultSet.next()) {
-
-                    return resultSet.getInt(
-                            1
-                    );
-                }
-            }
+            return;
         }
 
-        return 0;
-    }
+        System.out.println(
+                "OVChipkaart #" +
+                        kaart.getKaart_nummer()
+        );
 
+        System.out.println(
+                "Geldig tot: " +
+                        kaart.getGeldig_tot()
+        );
 
-    private static void toonTestKoppelingen(
-            Connection conn)
-            throws SQLException {
+        System.out.println(
+                "Klasse: " +
+                        kaart.getKlasse()
+        );
 
-        String query =
-                "SELECT kaart_nummer, product_nummer " +
-                        "FROM ov_chipkaart_product " +
-                        "WHERE kaart_nummer IN (?, ?) " +
-                        "OR product_nummer IN (?, ?, ?) " +
-                        "ORDER BY kaart_nummer, product_nummer";
+        System.out.println(
+                "Saldo: " +
+                        kaart.getSaldo()
+        );
 
-        try (PreparedStatement statement =
-                     conn.prepareStatement(query)) {
+        if (kaart.getReiziger() != null) {
 
-            statement.setInt(
-                    1,
-                    TEST_KAART_ID_1
+            System.out.println(
+                    "Reiziger: #" +
+                            kaart
+                                    .getReiziger()
+                                    .getId()
             );
+        }
 
-            statement.setInt(
-                    2,
-                    TEST_KAART_ID_2
+        System.out.println(
+                "Aantal producten: " +
+                        kaart
+                                .getProducten()
+                                .size()
+        );
+
+        for (Product product :
+                kaart.getProducten()) {
+
+            System.out.println(
+                    "  Product #" +
+                            product.getProduct_nummer() +
+                            " " +
+                            product.getNaam()
             );
-
-            statement.setInt(
-                    3,
-                    TEST_PRODUCT_ID_1
-            );
-
-            statement.setInt(
-                    4,
-                    TEST_PRODUCT_ID_2
-            );
-
-            statement.setInt(
-                    5,
-                    TEST_PRODUCT_ID_3
-            );
-
-
-            try (ResultSet resultSet =
-                         statement.executeQuery()) {
-
-                int aantal =
-                        0;
-
-                while (resultSet.next()) {
-
-                    aantal++;
-
-                    System.out.println(
-                            "kaart_nummer = " +
-                                    resultSet.getInt(
-                                            "kaart_nummer"
-                                    ) +
-                                    ", product_nummer = " +
-                                    resultSet.getInt(
-                                            "product_nummer"
-                                    )
-                    );
-                }
-
-                System.out.println(
-                        "Totaal aantal testkoppelingen: " +
-                                aantal
-                );
-            }
         }
     }
 
 
-    private static OVChipkaart zoekTestKaart(
-            OVChipkaartDAO ovChipkaartDAO,
-            int kaartNummer)
-            throws SQLException {
+    private static OVChipkaart zoekKaart(
+            Product product,
+            int kaartNummer) {
 
-        List<OVChipkaart> kaarten =
-                ovChipkaartDAO.findAll();
+        if (product == null) {
+            return null;
+        }
+
+        for (OVChipkaart kaart :
+                product.getOvChipkaarten()) {
+
+            if (kaart.getKaart_nummer() ==
+                    kaartNummer) {
+
+                return kaart;
+            }
+        }
+
+        return null;
+    }
+
+
+    private static Product zoekProduct(
+            OVChipkaart ovChipkaart,
+            int productNummer) {
+
+        if (ovChipkaart == null) {
+            return null;
+        }
+
+        for (Product product :
+                ovChipkaart.getProducten()) {
+
+            if (product.getProduct_nummer() ==
+                    productNummer) {
+
+                return product;
+            }
+        }
+
+        return null;
+    }
+
+
+    private static OVChipkaart zoekKaartOpNummer(
+            List<OVChipkaart> kaarten,
+            int kaartNummer) {
+
+        if (kaarten == null) {
+            return null;
+        }
 
         for (OVChipkaart kaart :
                 kaarten) {
@@ -1390,5 +988,76 @@ public class Main {
         }
 
         return null;
+    }
+
+
+    private static void ruimOudeTestdataOp(
+            ReizigerDAO reizigerDAO,
+            OVChipkaartDAO ovChipkaartDAO,
+            ProductDAO productDAO)
+            throws Exception {
+
+        System.out.println(
+                "\n--- Oude P5H-testdata controleren ---"
+        );
+
+
+        int[] productNummers = {
+                TEST_PRODUCT_ID_1,
+                TEST_PRODUCT_ID_2,
+                TEST_PRODUCT_ID_3
+        };
+
+        for (int productNummer :
+                productNummers) {
+
+            Product product =
+                    productDAO.findById(
+                            productNummer
+                    );
+
+            if (product != null) {
+
+                productDAO.delete(
+                        product
+                );
+            }
+        }
+
+
+        List<OVChipkaart> kaarten =
+                ovChipkaartDAO.findAll();
+
+        for (OVChipkaart kaart :
+                kaarten) {
+
+            if (kaart.getKaart_nummer() ==
+                    TEST_KAART_ID_1 ||
+                    kaart.getKaart_nummer() ==
+                            TEST_KAART_ID_2) {
+
+                ovChipkaartDAO.delete(
+                        kaart
+                );
+            }
+        }
+
+
+
+        Reiziger reiziger =
+                reizigerDAO.findById(
+                        TEST_REIZIGER_ID
+                );
+
+        if (reiziger != null) {
+
+            reizigerDAO.delete(
+                    reiziger
+            );
+        }
+
+        System.out.println(
+                "Database is klaar voor de P5H-test."
+        );
     }
 }

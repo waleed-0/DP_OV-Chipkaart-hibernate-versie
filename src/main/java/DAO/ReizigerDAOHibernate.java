@@ -4,16 +4,16 @@ import jakarta.persistence.EntityManager;
 import jakarta.persistence.EntityManagerFactory;
 import jakarta.persistence.EntityTransaction;
 
-import main.java.POJO.Adres;
 import main.java.POJO.Reiziger;
 
+import java.sql.Date;
 import java.util.List;
 
-public class AdresDAOPsql implements AdresDAO {
+public class ReizigerDAOHibernate implements ReizigerDAO {
 
     private final EntityManagerFactory emf;
 
-    public AdresDAOPsql(
+    public ReizigerDAOHibernate(
             EntityManagerFactory emf) {
 
         this.emf = emf;
@@ -21,9 +21,9 @@ public class AdresDAOPsql implements AdresDAO {
 
     @Override
     public boolean save(
-            Adres adres) {
+            Reiziger reiziger) {
 
-        if (adres == null) {
+        if (reiziger == null) {
             return false;
         }
 
@@ -38,7 +38,7 @@ public class AdresDAOPsql implements AdresDAO {
             transaction.begin();
 
             em.persist(
-                    adres
+                    reiziger
             );
 
             transaction.commit();
@@ -63,9 +63,9 @@ public class AdresDAOPsql implements AdresDAO {
 
     @Override
     public boolean update(
-            Adres adres) {
+            Reiziger reiziger) {
 
-        if (adres == null) {
+        if (reiziger == null) {
             return false;
         }
 
@@ -80,7 +80,7 @@ public class AdresDAOPsql implements AdresDAO {
             transaction.begin();
 
             em.merge(
-                    adres
+                    reiziger
             );
 
             transaction.commit();
@@ -105,9 +105,9 @@ public class AdresDAOPsql implements AdresDAO {
 
     @Override
     public boolean delete(
-            Adres adres) {
+            Reiziger reiziger) {
 
-        if (adres == null) {
+        if (reiziger == null) {
             return false;
         }
 
@@ -121,13 +121,13 @@ public class AdresDAOPsql implements AdresDAO {
 
             transaction.begin();
 
-            Adres managedAdres =
+            Reiziger managedReiziger =
                     em.find(
-                            Adres.class,
-                            adres.getId()
+                            Reiziger.class,
+                            reiziger.getId()
                     );
 
-            if (managedAdres == null) {
+            if (managedReiziger == null) {
 
                 transaction.rollback();
 
@@ -135,7 +135,7 @@ public class AdresDAOPsql implements AdresDAO {
             }
 
             em.remove(
-                    managedAdres
+                    managedReiziger
             );
 
             transaction.commit();
@@ -159,7 +159,7 @@ public class AdresDAOPsql implements AdresDAO {
     }
 
     @Override
-    public Adres findById(
+    public Reiziger findById(
             int id) {
 
         EntityManager em =
@@ -167,13 +167,13 @@ public class AdresDAOPsql implements AdresDAO {
 
         try {
 
-            List<Adres> resultaten =
+            List<Reiziger> resultaten =
                     em.createQuery(
-                                    "SELECT a " +
-                                            "FROM Adres a " +
-                                            "JOIN FETCH a.reiziger " +
-                                            "WHERE a.adres_id = :id",
-                                    Adres.class
+                                    "SELECT DISTINCT r " +
+                                            "FROM Reiziger r " +
+                                            "LEFT JOIN FETCH r.ovChipkaarten " +
+                                            "WHERE r.reiziger_id = :id",
+                                    Reiziger.class
                             )
                             .setParameter(
                                     "id",
@@ -194,37 +194,31 @@ public class AdresDAOPsql implements AdresDAO {
     }
 
     @Override
-    public Adres findByReiziger(
-            Reiziger reiziger) {
-
-        if (reiziger == null) {
-            return null;
-        }
+    public List<Reiziger> findByGbdatum(
+            String datum) {
 
         EntityManager em =
                 emf.createEntityManager();
 
         try {
 
-            List<Adres> resultaten =
-                    em.createQuery(
-                                    "SELECT a " +
-                                            "FROM Adres a " +
-                                            "JOIN FETCH a.reiziger " +
-                                            "WHERE a.reiziger.reiziger_id = :reizigerId",
-                                    Adres.class
-                            )
-                            .setParameter(
-                                    "reizigerId",
-                                    reiziger.getId()
-                            )
-                            .getResultList();
+            Date geboortedatum =
+                    Date.valueOf(
+                            datum
+                    );
 
-            if (resultaten.isEmpty()) {
-                return null;
-            }
-
-            return resultaten.get(0);
+            return em.createQuery(
+                            "SELECT DISTINCT r " +
+                                    "FROM Reiziger r " +
+                                    "LEFT JOIN FETCH r.ovChipkaarten " +
+                                    "WHERE r.geboortedatum = :datum",
+                            Reiziger.class
+                    )
+                    .setParameter(
+                            "datum",
+                            geboortedatum
+                    )
+                    .getResultList();
 
         } finally {
 
@@ -233,7 +227,7 @@ public class AdresDAOPsql implements AdresDAO {
     }
 
     @Override
-    public List<Adres> findAll() {
+    public List<Reiziger> findAll() {
 
         EntityManager em =
                 emf.createEntityManager();
@@ -241,10 +235,10 @@ public class AdresDAOPsql implements AdresDAO {
         try {
 
             return em.createQuery(
-                            "SELECT a " +
-                                    "FROM Adres a " +
-                                    "JOIN FETCH a.reiziger",
-                            Adres.class
+                            "SELECT DISTINCT r " +
+                                    "FROM Reiziger r " +
+                                    "LEFT JOIN FETCH r.ovChipkaarten",
+                            Reiziger.class
                     )
                     .getResultList();
 

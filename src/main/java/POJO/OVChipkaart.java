@@ -1,18 +1,43 @@
 package main.java.POJO;
 
+import jakarta.persistence.Column;
+import jakarta.persistence.Entity;
+import jakarta.persistence.FetchType;
+import jakarta.persistence.Id;
+import jakarta.persistence.JoinColumn;
+import jakarta.persistence.ManyToMany;
+import jakarta.persistence.ManyToOne;
+import jakarta.persistence.Table;
+
 import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.List;
 
+@Entity
+@Table(name = "ov_chipkaart")
 public class OVChipkaart {
 
+    @Id
+    @Column(name = "kaart_nummer")
     private int kaart_nummer;
+
+    @Column(name = "geldig_tot", nullable = false)
     private LocalDate geldig_tot;
+
+    @Column(name = "klasse", nullable = false)
     private int klasse;
+
+    @Column(name = "saldo", nullable = false)
     private double saldo;
 
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "reiziger_id", nullable = false)
     private Reiziger reiziger;
 
+    @ManyToMany(
+            mappedBy = "ovChipkaarten",
+            fetch = FetchType.LAZY
+    )
     private List<Product> producten =
             new ArrayList<>();
 
@@ -49,9 +74,7 @@ public class OVChipkaart {
         return kaart_nummer;
     }
 
-    public void setKaart_nummer(
-            int kaart_nummer) {
-
+    public void setKaart_nummer(int kaart_nummer) {
         this.kaart_nummer = kaart_nummer;
     }
 
@@ -59,9 +82,7 @@ public class OVChipkaart {
         return geldig_tot;
     }
 
-    public void setGeldig_tot(
-            LocalDate geldig_tot) {
-
+    public void setGeldig_tot(LocalDate geldig_tot) {
         this.geldig_tot = geldig_tot;
     }
 
@@ -69,9 +90,7 @@ public class OVChipkaart {
         return klasse;
     }
 
-    public void setKlasse(
-            int klasse) {
-
+    public void setKlasse(int klasse) {
         this.klasse = klasse;
     }
 
@@ -79,9 +98,7 @@ public class OVChipkaart {
         return saldo;
     }
 
-    public void setSaldo(
-            double saldo) {
-
+    public void setSaldo(double saldo) {
         this.saldo = saldo;
     }
 
@@ -89,9 +106,7 @@ public class OVChipkaart {
         return reiziger;
     }
 
-    public void setReiziger(
-            Reiziger reiziger) {
-
+    public void setReiziger(Reiziger reiziger) {
         this.reiziger = reiziger;
     }
 
@@ -99,8 +114,7 @@ public class OVChipkaart {
         return producten;
     }
 
-    public void setProducten(
-            List<Product> producten) {
+    public void setProducten(List<Product> producten) {
 
         this.producten =
                 new ArrayList<>();
@@ -117,16 +131,13 @@ public class OVChipkaart {
         }
     }
 
-    public boolean addProduct(
-            Product product) {
+    public boolean addProduct(Product product) {
 
         if (product == null) {
             return false;
         }
 
-        if (producten.contains(
-                product)) {
-
+        if (producten.contains(product)) {
             return false;
         }
 
@@ -136,9 +147,7 @@ public class OVChipkaart {
                 );
 
         if (toegevoegd &&
-                !product
-                        .getOvChipkaarten()
-                        .contains(this)) {
+                !product.getOvChipkaarten().contains(this)) {
 
             product.addOVChipkaart(
                     this
@@ -148,8 +157,7 @@ public class OVChipkaart {
         return toegevoegd;
     }
 
-    public boolean removeProduct(
-            Product product) {
+    public boolean removeProduct(Product product) {
 
         if (product == null) {
             return false;
@@ -161,9 +169,7 @@ public class OVChipkaart {
                 );
 
         if (verwijderd &&
-                product
-                        .getOvChipkaarten()
-                        .contains(this)) {
+                product.getOvChipkaarten().contains(this)) {
 
             product.removeOVChipkaart(
                     this
@@ -203,34 +209,17 @@ public class OVChipkaart {
                 Product product =
                         producten.get(i);
 
-                productenInfo.append(
-                        "#"
-                );
+                productenInfo.append("#")
+                        .append(product.getProduct_nummer())
+                        .append(" ")
+                        .append(product.getNaam());
 
-                productenInfo.append(
-                        product.getProduct_nummer()
-                );
-
-                productenInfo.append(
-                        " "
-                );
-
-                productenInfo.append(
-                        product.getNaam()
-                );
-
-                if (i <
-                        producten.size() - 1) {
-
-                    productenInfo.append(
-                            ", "
-                    );
+                if (i < producten.size() - 1) {
+                    productenInfo.append(", ");
                 }
             }
 
-            productenInfo.append(
-                    "]"
-            );
+            productenInfo.append("]");
         }
 
         return "OVChipkaart {#" +

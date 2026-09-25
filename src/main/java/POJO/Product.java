@@ -1,15 +1,40 @@
 package main.java.POJO;
 
+import jakarta.persistence.Column;
+import jakarta.persistence.Entity;
+import jakarta.persistence.FetchType;
+import jakarta.persistence.Id;
+import jakarta.persistence.JoinColumn;
+import jakarta.persistence.JoinTable;
+import jakarta.persistence.ManyToMany;
+import jakarta.persistence.Table;
+
 import java.util.ArrayList;
 import java.util.List;
 
+@Entity
+@Table(name = "product")
 public class Product {
 
+    @Id
+    @Column(name = "product_nummer")
     private int product_nummer;
+
+    @Column(name = "naam", nullable = false)
     private String naam;
+
+    @Column(name = "beschrijving")
     private String beschrijving;
+
+    @Column(name = "prijs", nullable = false)
     private double prijs;
 
+    @ManyToMany(fetch = FetchType.LAZY)
+    @JoinTable(
+            name = "ov_chipkaart_product",
+            joinColumns = @JoinColumn(name = "product_nummer"),
+            inverseJoinColumns = @JoinColumn(name = "kaart_nummer")
+    )
     private List<OVChipkaart> ovChipkaarten =
             new ArrayList<>();
 
@@ -32,9 +57,7 @@ public class Product {
         return product_nummer;
     }
 
-    public void setProduct_nummer(
-            int product_nummer) {
-
+    public void setProduct_nummer(int product_nummer) {
         this.product_nummer = product_nummer;
     }
 
@@ -42,9 +65,7 @@ public class Product {
         return naam;
     }
 
-    public void setNaam(
-            String naam) {
-
+    public void setNaam(String naam) {
         this.naam = naam;
     }
 
@@ -52,9 +73,7 @@ public class Product {
         return beschrijving;
     }
 
-    public void setBeschrijving(
-            String beschrijving) {
-
+    public void setBeschrijving(String beschrijving) {
         this.beschrijving = beschrijving;
     }
 
@@ -62,9 +81,7 @@ public class Product {
         return prijs;
     }
 
-    public void setPrijs(
-            double prijs) {
-
+    public void setPrijs(double prijs) {
         this.prijs = prijs;
     }
 
@@ -72,8 +89,7 @@ public class Product {
         return ovChipkaarten;
     }
 
-    public void setOvChipkaarten(
-            List<OVChipkaart> ovChipkaarten) {
+    public void setOvChipkaarten(List<OVChipkaart> ovChipkaarten) {
 
         this.ovChipkaarten =
                 new ArrayList<>();
@@ -90,16 +106,13 @@ public class Product {
         }
     }
 
-    public boolean addOVChipkaart(
-            OVChipkaart ovChipkaart) {
+    public boolean addOVChipkaart(OVChipkaart ovChipkaart) {
 
         if (ovChipkaart == null) {
             return false;
         }
 
-        if (ovChipkaarten.contains(
-                ovChipkaart)) {
-
+        if (ovChipkaarten.contains(ovChipkaart)) {
             return false;
         }
 
@@ -109,9 +122,7 @@ public class Product {
                 );
 
         if (toegevoegd &&
-                !ovChipkaart
-                        .getProducten()
-                        .contains(this)) {
+                !ovChipkaart.getProducten().contains(this)) {
 
             ovChipkaart.addProduct(
                     this
@@ -121,8 +132,7 @@ public class Product {
         return toegevoegd;
     }
 
-    public boolean removeOVChipkaart(
-            OVChipkaart ovChipkaart) {
+    public boolean removeOVChipkaart(OVChipkaart ovChipkaart) {
 
         if (ovChipkaart == null) {
             return false;
@@ -134,9 +144,7 @@ public class Product {
                 );
 
         if (verwijderd &&
-                ovChipkaart
-                        .getProducten()
-                        .contains(this)) {
+                ovChipkaart.getProducten().contains(this)) {
 
             ovChipkaart.removeProduct(
                     this
@@ -166,26 +174,17 @@ public class Product {
                 OVChipkaart ovChipkaart =
                         ovChipkaarten.get(i);
 
-                kaartenInfo.append(
-                        "#"
-                );
+                kaartenInfo.append("#")
+                        .append(
+                                ovChipkaart.getKaart_nummer()
+                        );
 
-                kaartenInfo.append(
-                        ovChipkaart.getKaart_nummer()
-                );
-
-                if (i <
-                        ovChipkaarten.size() - 1) {
-
-                    kaartenInfo.append(
-                            ", "
-                    );
+                if (i < ovChipkaarten.size() - 1) {
+                    kaartenInfo.append(", ");
                 }
             }
 
-            kaartenInfo.append(
-                    "]"
-            );
+            kaartenInfo.append("]");
         }
 
         return "Product {#" +

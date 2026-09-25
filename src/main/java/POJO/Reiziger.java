@@ -1,19 +1,58 @@
 package main.java.POJO;
 
+import jakarta.persistence.CascadeType;
+import jakarta.persistence.Column;
+import jakarta.persistence.Entity;
+import jakarta.persistence.FetchType;
+import jakarta.persistence.Id;
+import jakarta.persistence.OneToMany;
+import jakarta.persistence.OneToOne;
+import jakarta.persistence.Table;
+
 import java.sql.Date;
 import java.util.ArrayList;
 import java.util.List;
 
+@Entity
+@Table(name = "reiziger")
 public class Reiziger {
 
+    @Id
+    @Column(name = "reiziger_id")
     private int reiziger_id;
+
+    @Column(
+            name = "voorletters",
+            nullable = false
+    )
     private String voorletters;
+
+    @Column(name = "tussenvoegsel")
     private String tussenvoegsel;
+
+    @Column(
+            name = "achternaam",
+            nullable = false
+    )
     private String achternaam;
+
+    @Column(name = "geboortedatum")
     private Date geboortedatum;
 
+    @OneToOne(
+            mappedBy = "reiziger",
+            cascade = CascadeType.ALL,
+            fetch = FetchType.LAZY,
+            orphanRemoval = true
+    )
     private Adres adres;
 
+    @OneToMany(
+            mappedBy = "reiziger",
+            cascade = CascadeType.ALL,
+            fetch = FetchType.LAZY,
+            orphanRemoval = true
+    )
     private List<OVChipkaart> ovChipkaarten =
             new ArrayList<>();
 
@@ -27,11 +66,20 @@ public class Reiziger {
             String achternaam,
             Date geboortedatum) {
 
-        this.reiziger_id = reiziger_id;
-        this.voorletters = voorletters;
-        this.tussenvoegsel = tussenvoegsel;
-        this.achternaam = achternaam;
-        this.geboortedatum = geboortedatum;
+        this.reiziger_id =
+                reiziger_id;
+
+        this.voorletters =
+                voorletters;
+
+        this.tussenvoegsel =
+                tussenvoegsel;
+
+        this.achternaam =
+                achternaam;
+
+        this.geboortedatum =
+                geboortedatum;
     }
 
     public Reiziger(
@@ -42,75 +90,110 @@ public class Reiziger {
             Date geboortedatum,
             Adres adres) {
 
-        this.reiziger_id = reiziger_id;
-        this.voorletters = voorletters;
-        this.tussenvoegsel = tussenvoegsel;
-        this.achternaam = achternaam;
-        this.geboortedatum = geboortedatum;
-        this.adres = adres;
+        this.reiziger_id =
+                reiziger_id;
+
+        this.voorletters =
+                voorletters;
+
+        this.tussenvoegsel =
+                tussenvoegsel;
+
+        this.achternaam =
+                achternaam;
+
+        this.geboortedatum =
+                geboortedatum;
+
+        setAdres(
+                adres
+        );
     }
 
     public int getId() {
+
         return reiziger_id;
     }
 
     public void setId(
             int id) {
 
-        this.reiziger_id = id;
+        this.reiziger_id =
+                id;
     }
 
     public String getVoorletters() {
+
         return voorletters;
     }
 
     public void setVoorletters(
             String voorletters) {
 
-        this.voorletters = voorletters;
+        this.voorletters =
+                voorletters;
     }
 
     public String getTussenvoegsel() {
+
         return tussenvoegsel;
     }
 
     public void setTussenvoegsel(
             String tussenvoegsel) {
 
-        this.tussenvoegsel = tussenvoegsel;
+        this.tussenvoegsel =
+                tussenvoegsel;
     }
 
     public String getAchternaam() {
+
         return achternaam;
     }
 
     public void setAchternaam(
             String achternaam) {
 
-        this.achternaam = achternaam;
+        this.achternaam =
+                achternaam;
     }
 
     public Date getGeboortedatum() {
+
         return geboortedatum;
     }
 
     public void setGeboortedatum(
             Date geboortedatum) {
 
-        this.geboortedatum = geboortedatum;
+        this.geboortedatum =
+                geboortedatum;
     }
 
+
     public Adres getAdres() {
+
         return adres;
     }
 
     public void setAdres(
             Adres adres) {
 
-        this.adres = adres;
+        this.adres =
+                adres;
+
+        if (adres != null &&
+                adres.getReiziger() != this) {
+
+            adres.setReiziger(
+                    this
+            );
+        }
     }
 
+
     public List<OVChipkaart> getOvChipkaarten() {
+
         return ovChipkaarten;
     }
 
@@ -136,6 +219,7 @@ public class Reiziger {
             OVChipkaart ovChipkaart) {
 
         if (ovChipkaart == null) {
+
             return false;
         }
 
@@ -165,6 +249,7 @@ public class Reiziger {
             OVChipkaart ovChipkaart) {
 
         if (ovChipkaart == null) {
+
             return false;
         }
 
@@ -210,10 +295,14 @@ public class Reiziger {
             adresInfo =
                     ", Adres {#" +
                             adres.getId() +
-                            " " +
+                            ", postcode " +
                             adres.getPostcode() +
-                            "-" +
+                            ", huisnummer " +
                             adres.getHuisnummer() +
+                            ", straat " +
+                            adres.getStraat() +
+                            ", woonplaats " +
+                            adres.getWoonplaats() +
                             "}";
         }
 
