@@ -13,36 +13,26 @@ public class ReizigerDAOHibernate implements ReizigerDAO {
 
     private final EntityManagerFactory emf;
 
-    public ReizigerDAOHibernate(
-            EntityManagerFactory emf) {
-
+    public ReizigerDAOHibernate(EntityManagerFactory emf) {
         this.emf = emf;
     }
 
     @Override
-    public boolean save(
-            Reiziger reiziger) {
+    public boolean save(Reiziger reiziger) {
 
         if (reiziger == null) {
             return false;
         }
 
-        EntityManager em =
-                emf.createEntityManager();
-
-        EntityTransaction transaction =
-                em.getTransaction();
+        EntityManager em = emf.createEntityManager();
+        EntityTransaction transaction = em.getTransaction();
 
         try {
-
             transaction.begin();
 
-            em.persist(
-                    reiziger
-            );
+            em.persist(reiziger);
 
             transaction.commit();
-
             return true;
 
         } catch (Exception e) {
@@ -52,39 +42,29 @@ public class ReizigerDAOHibernate implements ReizigerDAO {
             }
 
             e.printStackTrace();
-
             return false;
 
         } finally {
-
             em.close();
         }
     }
 
     @Override
-    public boolean update(
-            Reiziger reiziger) {
+    public boolean update(Reiziger reiziger) {
 
         if (reiziger == null) {
             return false;
         }
 
-        EntityManager em =
-                emf.createEntityManager();
-
-        EntityTransaction transaction =
-                em.getTransaction();
+        EntityManager em = emf.createEntityManager();
+        EntityTransaction transaction = em.getTransaction();
 
         try {
-
             transaction.begin();
 
-            em.merge(
-                    reiziger
-            );
+            em.merge(reiziger);
 
             transaction.commit();
-
             return true;
 
         } catch (Exception e) {
@@ -94,123 +74,85 @@ public class ReizigerDAOHibernate implements ReizigerDAO {
             }
 
             e.printStackTrace();
-
             return false;
 
         } finally {
-
             em.close();
         }
     }
 
     @Override
-    public boolean delete(
-            Reiziger reiziger) {
+    public boolean delete(Reiziger reiziger) {
 
         if (reiziger == null) {
             return false;
         }
 
-        EntityManager em =
-                emf.createEntityManager();
-
-        EntityTransaction transaction =
-                em.getTransaction();
+        EntityManager em = emf.createEntityManager();
+        EntityTransaction transaction = em.getTransaction();
 
         try {
-
             transaction.begin();
 
-            Reiziger managedReiziger =
-                    em.find(
-                            Reiziger.class,
-                            reiziger.getId()
-                    );
-
-            if (managedReiziger == null) {
-
-                transaction.rollback();
-
-                return false;
-            }
-
-            em.remove(
-                    managedReiziger
-            );
-
-            transaction.commit();
-
-            return true;
-
-        } catch (Exception e) {
-
-            if (transaction.isActive()) {
-                transaction.rollback();
-            }
-
-            e.printStackTrace();
-
-            return false;
-
-        } finally {
-
-            em.close();
-        }
-    }
-
-    @Override
-    public Reiziger findById(
-            int id) {
-
-        EntityManager em =
-                emf.createEntityManager();
-
-        try {
-
-            List<Reiziger> resultaten =
+            int aantal =
                     em.createQuery(
-                                    "SELECT DISTINCT r " +
-                                            "FROM Reiziger r " +
-                                            "LEFT JOIN FETCH r.ovChipkaarten " +
-                                            "WHERE r.reiziger_id = :id",
-                                    Reiziger.class
+                                    "DELETE FROM Reiziger r " +
+                                            "WHERE r.reiziger_id = :reizigerId"
                             )
                             .setParameter(
-                                    "id",
-                                    id
+                                    "reizigerId",
+                                    reiziger.getId()
                             )
-                            .getResultList();
+                            .executeUpdate();
 
-            if (resultaten.isEmpty()) {
-                return null;
+            transaction.commit();
+
+            return aantal > 0;
+
+        } catch (Exception e) {
+
+            if (transaction.isActive()) {
+                transaction.rollback();
             }
 
-            return resultaten.get(0);
+            e.printStackTrace();
+            return false;
 
         } finally {
-
             em.close();
         }
     }
 
     @Override
-    public List<Reiziger> findByGbdatum(
-            String datum) {
+    public Reiziger findById(int id) {
 
-        EntityManager em =
-                emf.createEntityManager();
+        EntityManager em = emf.createEntityManager();
 
         try {
+            return em.find(
+                    Reiziger.class,
+                    id
+            );
 
+        } finally {
+            em.close();
+        }
+    }
+
+    @Override
+    public List<Reiziger> findByGbdatum(String datum) {
+
+        EntityManager em = emf.createEntityManager();
+
+        try {
             Date geboortedatum =
                     Date.valueOf(
                             datum
                     );
 
             return em.createQuery(
-                            "SELECT DISTINCT r " +
+                            "SELECT r " +
                                     "FROM Reiziger r " +
-                                    "LEFT JOIN FETCH r.ovChipkaarten " +
                                     "WHERE r.geboortedatum = :datum",
                             Reiziger.class
                     )
@@ -221,7 +163,6 @@ public class ReizigerDAOHibernate implements ReizigerDAO {
                     .getResultList();
 
         } finally {
-
             em.close();
         }
     }
@@ -229,21 +170,16 @@ public class ReizigerDAOHibernate implements ReizigerDAO {
     @Override
     public List<Reiziger> findAll() {
 
-        EntityManager em =
-                emf.createEntityManager();
+        EntityManager em = emf.createEntityManager();
 
         try {
-
             return em.createQuery(
-                            "SELECT DISTINCT r " +
-                                    "FROM Reiziger r " +
-                                    "LEFT JOIN FETCH r.ovChipkaarten",
+                            "SELECT r FROM Reiziger r",
                             Reiziger.class
                     )
                     .getResultList();
 
         } finally {
-
             em.close();
         }
     }

@@ -9,25 +9,19 @@ import java.util.List;
 public interface ProductDAO {
 
     boolean save(
-            Product product)
-            throws SQLException;
+            Product product);
 
     boolean update(
-            Product product)
-            throws SQLException;
+            Product product);
 
     boolean delete(
-            Product product)
-            throws SQLException;
+            Product product);
 
     Product findById(
-            int id)
-            throws SQLException;
+            int id);
 
     List<Product> findByOVChipkaart(
-            OVChipkaart ovChipkaart)
-            throws SQLException;
+            OVChipkaart ovChipkaart);
 
-    List<Product> findAll()
-            throws SQLException;
+    List<Product> findAll();
 }

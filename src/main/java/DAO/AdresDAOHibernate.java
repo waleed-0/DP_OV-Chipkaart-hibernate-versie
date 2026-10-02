@@ -13,36 +13,26 @@ public class AdresDAOHibernate implements AdresDAO {
 
     private final EntityManagerFactory emf;
 
-    public AdresDAOHibernate(
-            EntityManagerFactory emf) {
-
+    public AdresDAOHibernate(EntityManagerFactory emf) {
         this.emf = emf;
     }
 
     @Override
-    public boolean save(
-            Adres adres) {
+    public boolean save(Adres adres) {
 
         if (adres == null) {
             return false;
         }
 
-        EntityManager em =
-                emf.createEntityManager();
-
-        EntityTransaction transaction =
-                em.getTransaction();
+        EntityManager em = emf.createEntityManager();
+        EntityTransaction transaction = em.getTransaction();
 
         try {
-
             transaction.begin();
 
-            em.persist(
-                    adres
-            );
+            em.persist(adres);
 
             transaction.commit();
-
             return true;
 
         } catch (Exception e) {
@@ -52,39 +42,29 @@ public class AdresDAOHibernate implements AdresDAO {
             }
 
             e.printStackTrace();
-
             return false;
 
         } finally {
-
             em.close();
         }
     }
 
     @Override
-    public boolean update(
-            Adres adres) {
+    public boolean update(Adres adres) {
 
         if (adres == null) {
             return false;
         }
 
-        EntityManager em =
-                emf.createEntityManager();
-
-        EntityTransaction transaction =
-                em.getTransaction();
+        EntityManager em = emf.createEntityManager();
+        EntityTransaction transaction = em.getTransaction();
 
         try {
-
             transaction.begin();
 
-            em.merge(
-                    adres
-            );
+            em.merge(adres);
 
             transaction.commit();
-
             return true;
 
         } catch (Exception e) {
@@ -94,123 +74,85 @@ public class AdresDAOHibernate implements AdresDAO {
             }
 
             e.printStackTrace();
-
             return false;
 
         } finally {
-
             em.close();
         }
     }
 
     @Override
-    public boolean delete(
-            Adres adres) {
+    public boolean delete(Adres adres) {
 
         if (adres == null) {
             return false;
         }
 
-        EntityManager em =
-                emf.createEntityManager();
-
-        EntityTransaction transaction =
-                em.getTransaction();
+        EntityManager em = emf.createEntityManager();
+        EntityTransaction transaction = em.getTransaction();
 
         try {
-
             transaction.begin();
 
-            Adres managedAdres =
-                    em.find(
-                            Adres.class,
-                            adres.getId()
-                    );
-
-            if (managedAdres == null) {
-
-                transaction.rollback();
-
-                return false;
-            }
-
-            em.remove(
-                    managedAdres
-            );
-
-            transaction.commit();
-
-            return true;
-
-        } catch (Exception e) {
-
-            if (transaction.isActive()) {
-                transaction.rollback();
-            }
-
-            e.printStackTrace();
-
-            return false;
-
-        } finally {
-
-            em.close();
-        }
-    }
-
-    @Override
-    public Adres findById(
-            int id) {
-
-        EntityManager em =
-                emf.createEntityManager();
-
-        try {
-
-            List<Adres> resultaten =
+            int aantal =
                     em.createQuery(
-                                    "SELECT a " +
-                                            "FROM Adres a " +
-                                            "JOIN FETCH a.reiziger " +
-                                            "WHERE a.adres_id = :id",
-                                    Adres.class
+                                    "DELETE FROM Adres a " +
+                                            "WHERE a.adres_id = :adresId"
                             )
                             .setParameter(
-                                    "id",
-                                    id
+                                    "adresId",
+                                    adres.getId()
                             )
-                            .getResultList();
+                            .executeUpdate();
 
-            if (resultaten.isEmpty()) {
-                return null;
+            transaction.commit();
+
+            return aantal > 0;
+
+        } catch (Exception e) {
+
+            if (transaction.isActive()) {
+                transaction.rollback();
             }
 
-            return resultaten.get(0);
+            e.printStackTrace();
+            return false;
 
         } finally {
-
             em.close();
         }
     }
 
     @Override
-    public Adres findByReiziger(
-            Reiziger reiziger) {
+    public Adres findById(int id) {
+
+        EntityManager em = emf.createEntityManager();
+
+        try {
+            return em.find(
+                    Adres.class,
+                    id
+            );
+
+        } finally {
+            em.close();
+        }
+    }
+
+    @Override
+    public Adres findByReiziger(Reiziger reiziger) {
 
         if (reiziger == null) {
             return null;
         }
 
-        EntityManager em =
-                emf.createEntityManager();
+        EntityManager em = emf.createEntityManager();
 
         try {
-
             List<Adres> resultaten =
                     em.createQuery(
                                     "SELECT a " +
                                             "FROM Adres a " +
-                                            "JOIN FETCH a.reiziger " +
                                             "WHERE a.reiziger.reiziger_id = :reizigerId",
                                     Adres.class
                             )
@@ -227,7 +169,6 @@ public class AdresDAOHibernate implements AdresDAO {
             return resultaten.get(0);
 
         } finally {
-
             em.close();
         }
     }
@@ -235,21 +176,16 @@ public class AdresDAOHibernate implements AdresDAO {
     @Override
     public List<Adres> findAll() {
 
-        EntityManager em =
-                emf.createEntityManager();
+        EntityManager em = emf.createEntityManager();
 
         try {
-
             return em.createQuery(
-                            "SELECT a " +
-                                    "FROM Adres a " +
-                                    "JOIN FETCH a.reiziger",
+                            "SELECT a FROM Adres a",
                             Adres.class
                     )
                     .getResultList();
 
         } finally {
-
             em.close();
         }
     }

@@ -18,6 +18,8 @@
 
         <class>main.java.POJO.Reiziger</class>
         <class>main.java.POJO.Adres</class>
+        <class>main.java.POJO.OVChipkaart</class>
+        <class>main.java.POJO.Product</class>
 
         <properties>
 
@@ -27,7 +29,7 @@
 
             <property
                     name="jakarta.persistence.jdbc.url"
-                    value="jdbc:postgresql://localhost:5432/ovchip"/>
+                    value="jdbc:postgresql://localhost:5434/ovchip"/>
 
             <property
                     name="jakarta.persistence.jdbc.user"

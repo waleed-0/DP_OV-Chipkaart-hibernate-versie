@@ -1,5 +1,6 @@
 package main.java.POJO;
 
+import jakarta.persistence.CascadeType;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.FetchType;
@@ -36,6 +37,10 @@ public class OVChipkaart {
 
     @ManyToMany(
             mappedBy = "ovChipkaarten",
+            cascade = {
+                    CascadeType.PERSIST,
+                    CascadeType.MERGE
+            },
             fetch = FetchType.LAZY
     )
     private List<Product> producten =

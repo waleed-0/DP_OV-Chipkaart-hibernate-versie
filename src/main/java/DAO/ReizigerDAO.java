@@ -8,25 +8,19 @@ import java.util.List;
 public interface ReizigerDAO {
 
     boolean save(
-            Reiziger reiziger)
-            throws SQLException;
+            Reiziger reiziger);
 
     boolean update(
-            Reiziger reiziger)
-            throws SQLException;
+            Reiziger reiziger);
 
     boolean delete(
-            Reiziger reiziger)
-            throws SQLException;
+            Reiziger reiziger);
 
     Reiziger findById(
-            int id)
-            throws SQLException;
+            int id);
 
     List<Reiziger> findByGbdatum(
-            String datum)
-            throws SQLException;
+            String datum);
 
-    List<Reiziger> findAll()
-            throws SQLException;
+    List<Reiziger> findAll();
 }
